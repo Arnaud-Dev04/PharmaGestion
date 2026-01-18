@@ -15,9 +15,7 @@ Comme votre projet n'est pas encore lié, vous devez d'abord créer un espace su
 
 ## 1. État des lieux
 J'ai effectué les actions suivantes pour nettoyer le projet :
-- **Déplacement des scripts** : Tous les scripts de maintenance (`fix_*.py`, `check_*.py`, etc.) sont maintenant dans `backend/scripts/`.
-- **Déplacement des tests** : Les fichiers de test (`test_*.py`) sont maintenant dans `backend/tests/`.
-- **Nettoyage** : Suppression des fichiers temporaires (`.pdf`, `.xlsx`, logs) à la racine du backend.
+- **Archivage** : Les scripts de maintenance et tests ont été déplacés dans un dossier `_ARCHIVE/` à la racine pour nettoyer le backend tout en les conservant.
 - **Sécurité** : Mise à jour de `.gitignore` pour ignorer les bases de données et fichiers sensibles.
 
 ## 2. Procédure de mise à jour (Git)
@@ -57,11 +55,11 @@ git push -u origin main
 
 ## 3. Remarques Importantes
 - **Base de données** : Le fichier `pharmacy_local.db` est ignoré par `.gitignore` pour ne pas écraser vos données de production lors d'un clonage. Pensez à faire des sauvegardes manuelles.
-- **Dossier Scripts** : Si vous devez lancer un script de maintenance, allez dans le dossier :
+- **Dossier Archives** : Si vous devez lancer un script de maintenance, ils sont maintenant dans `_ARCHIVE/backend_scripts` :
   ```bash
-  cd backend/scripts
+  cd _ARCHIVE/backend_scripts
   python fix_users.py
   ```
-  *(Note : Il faudra peut-être ajuster les imports dans certains scripts s'ils ne trouvent plus le module `app`. Si c'est le cas, lancez-les depuis `backend` comme ceci : `python -m scripts.fix_users`)*.
+  *(Note : Il faudra peut-être ajuster les imports dans certains scripts s'ils ne trouvent plus le module `app` car ils sont hors du dossier backend).*
 
 Votre projet est maintenant propre et prêt pour GitHub !
