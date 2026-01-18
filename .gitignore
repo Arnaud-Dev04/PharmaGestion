@@ -1,0 +1,192 @@
+# ============================================================================
+# Pharmacy Management System - .gitignore
+# ============================================================================
+
+# ============================================================================
+# Python / Backend
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# ============================================================================
+# Databases
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+pharmacy_local.db
+backend/pharmacy_local.db
+
+# ============================================================================
+# Environment variables
+# ============================================================================
+.env
+.env.local
+.env.*.local
+*.env
+
+# ============================================================================
+# Logs
+# ============================================================================
+*.log
+backend_log.txt
+output_*.txt
+test*_output.txt
+verification_*.txt
+
+# Note: README.txt et fichiers de documentation .txt sont autorisés
+# On exclut seulement les logs et fichiers temporaires .txt
+
+# ============================================================================
+# IDE / Editors
+# ============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============================================================================
+# Flutter / Frontend1
+# ============================================================================
+frontend1/.dart_tool/
+frontend1/.flutter-plugins
+frontend1/.flutter-plugins-dependencies
+frontend1/.packages
+frontend1/.pub-cache/
+frontend1/.pub/
+frontend1/build/
+frontend1/coverage/
+frontend1/*.iml
+
+# ============================================================================
+# Node.js / Frontend (si nécessaire)
+# ============================================================================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/.pnp
+frontend/.pnp.js
+
+# ============================================================================
+# Build artifacts / Binaries
+# ============================================================================
+*.exe
+*.dll
+*.dylib
+*.so
+*.pdf
+*.xlsx
+*.xls
+
+# Release builds
+release/
+dist/
+build/
+Output/
+
+# ============================================================================
+# Test files / Generated files
+# ============================================================================
+test_*.pdf
+test_*.xlsx
+facture_*.pdf
+*.spec
+
+# ============================================================================
+# Scripts de migration / Debug (peuvent être gardés mais optionnel)
+# ============================================================================
+# Les scripts de migration peuvent être utiles mais les fichiers générés non
+# Décommentez si vous voulez exclure les scripts de test/debug :
+# backend/test_*.py
+# backend/debug_*.py
+# backend/check_*.py
+# backend/fix_*.py
+
+# ============================================================================
+# OS Files
+# ============================================================================
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ============================================================================
+# Temporary files
+# ============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# ============================================================================
+# Debug / Development
+# ============================================================================
+# ============================================================================
+# Debug / Development
+# ============================================================================
+.cursor/
+debug.log
+*.debug
+
+# ============================================================================
+# Backend Scripts & Tests output
+# ============================================================================
+backend/scripts/output_*.txt
+backend/tests/test_*_output.txt
+backend/tests/*.pdf
+backend/tests/*.xlsx
+
+# ============================================================================
+# Security
+# ============================================================================
+*.pem
+*.key
+*.cert
+*.pfx
+

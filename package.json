@@ -1,0 +1,58 @@
+{
+  "name": "pharma-gestion",
+  "version": "1.0.0",
+  "description": "Système de Gestion de Pharmacie",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build-backend": "cd backend && python build_exe.py",
+    "build-frontend": "cd frontend && npm run build",
+    "build-all": "npm run build-backend && npm run build-frontend && npm run build"
+  },
+  "build": {
+    "appId": "com.pharma.gestion",
+    "productName": "PharmaGestion",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "electron/**/*",
+      "!electron/node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "frontend/dist",
+        "to": "frontend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^24.13.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
