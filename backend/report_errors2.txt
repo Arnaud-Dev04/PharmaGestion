@@ -1,0 +1,20 @@
+--- Testing generate_stock_excel ---
+OK
+
+--- Testing generate_stock_pdf ---
+OK
+
+--- Testing generate_stock_word ---
+OK
+
+--- Testing generate_sales_excel ---
+OK
+
+--- Testing generate_sales_pdf ---
+OK
+
+--- Testing generate_sales_word ---
+OK
+
+--- Testing generate_financial_pdf ---
+OK

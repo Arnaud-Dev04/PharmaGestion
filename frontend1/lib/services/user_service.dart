@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:frontend1/models/user.dart';
 import 'package:frontend1/models/user_stats.dart';
 import 'package:frontend1/services/api_service.dart';
@@ -10,7 +11,7 @@ class UserService {
       final response = await _apiService.get('/auth/users');
       return (response.data as List).map((i) => User.fromJson(i)).toList();
     } catch (e) {
-      print('[UserService] Erreur getUsers: $e');
+      debugPrint('[UserService] Erreur getUsers: $e');
       rethrow;
     }
   }
@@ -27,7 +28,7 @@ class UserService {
       );
       return UserStats.fromJson(response.data);
     } catch (e) {
-      print('[UserService] Erreur getUserStats: $e');
+      debugPrint('[UserService] Erreur getUserStats: $e');
       rethrow;
     }
   }
@@ -42,7 +43,7 @@ class UserService {
       // Backend users.py a POST /users/
       return User.fromJson(response.data);
     } catch (e) {
-      print('[UserService] Erreur createUser: $e');
+      debugPrint('[UserService] Erreur createUser: $e');
       rethrow;
     }
   }
@@ -52,7 +53,7 @@ class UserService {
       final response = await _apiService.put('/users/$id', data: data);
       return User.fromJson(response.data);
     } catch (e) {
-      print('[UserService] Erreur updateUser: $e');
+      debugPrint('[UserService] Erreur updateUser: $e');
       rethrow;
     }
   }
@@ -61,7 +62,7 @@ class UserService {
     try {
       await _apiService.delete('/users/$id');
     } catch (e) {
-      print('[UserService] Erreur deleteUser: $e');
+      debugPrint('[UserService] Erreur deleteUser: $e');
       rethrow;
     }
   }
@@ -70,7 +71,7 @@ class UserService {
     try {
       await _apiService.post('/users/$id/toggle-status');
     } catch (e) {
-      print('[UserService] Erreur toggleStatus: $e');
+      debugPrint('[UserService] Erreur toggleStatus: $e');
       rethrow;
     }
   }
@@ -82,7 +83,7 @@ class UserService {
         data: {'password': newPassword},
       );
     } catch (e) {
-      print('[UserService] Erreur updatePassword: $e');
+      debugPrint('[UserService] Erreur updatePassword: $e');
       rethrow;
     }
   }

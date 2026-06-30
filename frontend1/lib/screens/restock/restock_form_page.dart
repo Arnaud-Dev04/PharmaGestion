@@ -18,7 +18,7 @@ class _RestockFormPageState extends State<RestockFormPage> {
   final RestockService _restockService = RestockService();
 
   List<Medicine> _allMedicines = [];
-  List<Map<String, dynamic>> _cartItems = []; // {medicine, qty, price, expiry}
+  final List<Map<String, dynamic>> _cartItems = []; // {medicine, qty, price, expiry}
 
   Medicine? _selectedMedicine;
   final TextEditingController _qtyCtrl = TextEditingController();

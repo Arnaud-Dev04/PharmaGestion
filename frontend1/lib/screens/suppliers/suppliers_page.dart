@@ -85,18 +85,20 @@ class _SuppliersPageState extends State<SuppliersPage> {
       try {
         await _supplierService.deleteSupplier(supplier.id);
         _loadSuppliers();
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(lp.translate('supplierDeleted'))),
           );
+        }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${lp.translate('error')}: $e'),
               backgroundColor: Colors.red,
             ),
           );
+        }
       }
     }
   }

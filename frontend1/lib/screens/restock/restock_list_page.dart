@@ -65,12 +65,13 @@ class _RestockListPageState extends State<RestockListPage> {
       try {
         await _restockService.confirmOrder(order.id);
         _loadOrders();
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Commande confirmée et stock mis à jour"),
             ),
           );
+        }
       } catch (e) {
         // Handled by interceptor
       }
@@ -82,7 +83,9 @@ class _RestockListPageState extends State<RestockListPage> {
     try {
       await _restockService.cancelOrder(order.id);
       _loadOrders();
-    } catch (e) {}
+    } catch (e) {
+      // Handled by interceptor
+    }
   }
 
   @override
@@ -127,10 +130,8 @@ class _RestockListPageState extends State<RestockListPage> {
                         (item) => ListTile(
                           title: Text(item.medicineName),
                           subtitle: Text(
-                            "${item.quantity} x ${item.priceBuy} FBu" +
-                                (item.expiryDate != null
-                                    ? " (Exp: ${DateFormat('dd/MM/yy').format(item.expiryDate!)})"
-                                    : ""),
+                            "${item.quantity} x ${item.priceBuy} FBu"
+                                "${item.expiryDate != null ? " (Exp: ${DateFormat('dd/MM/yy').format(item.expiryDate!)})" : ""}",
                           ),
                           trailing: Text(
                             "${item.quantity * item.priceBuy} FBu",

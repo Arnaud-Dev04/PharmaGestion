@@ -9,7 +9,8 @@ from datetime import timedelta
 
 from app.database import get_local_db
 from app.models.user import User, UserRole
-from app.schemas.auth import Token, UserCreate, UserResponse, UserLogin
+from app.models.settings import Settings
+from app.schemas.auth import Token, UserCreate, UserResponse, UserLogin, ChangeInitialPassword
 from app.utils.security import (
     verify_password,
     hash_password,
@@ -94,9 +95,15 @@ async def login(
         expires_delta=access_token_expires
     )
     
+    # Check if this is the first setup
+    first_setup_setting = db.query(Settings).filter(Settings.key == "is_first_setup").first()
+    is_first_setup = first_setup_setting.value == "true" if first_setup_setting else False
+    
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "must_change_password": user.must_change_password,
+        "is_first_setup": is_first_setup
     }
 
 
@@ -144,7 +151,8 @@ async def register(
         username=user_data.username,
         password_hash=hash_password(user_data.password),
         role=user_data.role,
-        is_active=user_data.is_active
+        is_active=user_data.is_active,
+        must_change_password=True
     )
     
     db.add(new_user)
@@ -505,3 +513,80 @@ async def get_users_performance(
     
     return performances
 
+
+# ============================================================================
+# FIRST-TIME SETUP ENDPOINTS
+# ============================================================================
+
+@router.post(
+    "/change-initial-password",
+    summary="Change password on first login (required for new users)"
+)
+async def change_initial_password(
+    password_data: ChangeInitialPassword,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Change password for users who must change their password on first login.
+    
+    Only works if the user has `must_change_password=True`.
+    After changing, the flag is set to False.
+    """
+    if not current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password change is not required for this user"
+        )
+    
+    if password_data.new_password != password_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    # Update password and clear the flag
+    current_user.password_hash = hash_password(password_data.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    
+    # Generate new token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user.username},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "message": "Password changed successfully",
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+from app.auth.dependencies import get_super_admin_user
+
+@router.post(
+    "/complete-setup",
+    summary="Mark first-time setup as complete (Super Admin only)"
+)
+async def complete_setup(
+    current_user: User = Depends(get_super_admin_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Mark the first-time setup as complete.
+    
+    Sets the `is_first_setup` setting to "false".
+    Only Super Admin can call this endpoint.
+    """
+    setting = db.query(Settings).filter(Settings.key == "is_first_setup").first()
+    if setting:
+        setting.value = "false"
+    else:
+        setting = Settings(key="is_first_setup", value="false")
+        db.add(setting)
+    
+    db.commit()
+    
+    return {"message": "Setup completed successfully", "is_first_setup": False}

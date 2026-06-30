@@ -49,7 +49,7 @@ class LicenseProvider with ChangeNotifier {
       final response = await _apiService.get('/license/status');
       _status = LicenseStatus.fromJson(response.data);
     } catch (e) {
-      print('License check failed: $e');
+      debugPrint('License check failed: $e');
       // Fallback: Licence valide par défaut pour ne pas bloquer si l'endpoint n'existe pas encore
       _status = LicenseStatus(
         isValid: true,

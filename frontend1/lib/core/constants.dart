@@ -6,7 +6,7 @@ class AppConstants {
   // ============================================================================
   // API Configuration
   // ============================================================================
-  static const String apiBaseUrl = 'http://localhost:8000';
+  static const String apiBaseUrl = 'http://127.0.0.1:8000';
 
   // ============================================================================
   // Border Radius (from tailwind.config.js)

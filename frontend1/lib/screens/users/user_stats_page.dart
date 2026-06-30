@@ -126,7 +126,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                     child: Text(
                       _stats!.username.isNotEmpty
                           ? _stats!.username[0].toUpperCase()
@@ -175,14 +175,14 @@ class _UserStatsPageState extends State<UserStatsPage> {
                       StatsCard(
                         icon: Icons.attach_money,
                         label: languageProvider.translate('revenue'),
-                        value: 'F${_stats!.totalRevenue.toStringAsFixed(0)}',
+                        value: '${_stats!.totalRevenue.toStringAsFixed(0)} FBu',
                         iconBgColor: Colors.green,
                       ),
                       StatsCard(
                         icon: Icons.trending_up,
                         label: languageProvider.translate('avgCart'),
                         value:
-                            'F${_stats!.averageSaleAmount.toStringAsFixed(0)}',
+                            '${_stats!.averageSaleAmount.toStringAsFixed(0)} FBu',
                         iconBgColor: Colors.purple,
                       ),
                       StatsCard(
@@ -308,7 +308,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(8),
                                     child: Text(
-                                      'F${p.revenueGenerated.toStringAsFixed(0)}',
+                                      '${p.revenueGenerated.toStringAsFixed(0)} FBu',
                                       textAlign: TextAlign.right,
                                       style: const TextStyle(
                                         color: Colors.green,
@@ -403,8 +403,9 @@ class _UserStatsPageState extends State<UserStatsPage> {
   }
 
   Widget _buildChart(LanguageProvider languageProvider) {
-    if (_stats!.salesByDate.isEmpty)
+    if (_stats!.salesByDate.isEmpty) {
       return Center(child: Text(languageProvider.translate('noData')));
+    }
 
     // Simplification: Display LineChart with FL Chart
     return LineChart(
@@ -434,7 +435,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
             ),
           ),
         ],

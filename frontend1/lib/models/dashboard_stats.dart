@@ -234,9 +234,11 @@ class LowStockMedicine {
 /// Statistiques complètes du Dashboard
 class DashboardStats {
   final int totalMedicines;
+  final int totalSalesCount;
   final double weeklySales;
   final int totalSuppliers;
   final int expiredMedicines;
+  final int expiringSoonCount;
   final int lowStockMedicines;
   final double totalRevenue;
   final int cancelledSales;
@@ -250,9 +252,11 @@ class DashboardStats {
 
   DashboardStats({
     required this.totalMedicines,
+    required this.totalSalesCount,
     required this.weeklySales,
     required this.totalSuppliers,
     required this.expiredMedicines,
+    required this.expiringSoonCount,
     required this.lowStockMedicines,
     required this.totalRevenue,
     required this.cancelledSales,
@@ -268,9 +272,11 @@ class DashboardStats {
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     return DashboardStats(
       totalMedicines: json['total_medicines'] as int? ?? 0,
+      totalSalesCount: json['total_sales_count'] as int? ?? 0,
       weeklySales: (json['weekly_sales'] as num?)?.toDouble() ?? 0.0,
       totalSuppliers: json['total_suppliers'] as int? ?? 0,
       expiredMedicines: json['expired_medicines'] as int? ?? 0,
+      expiringSoonCount: json['expiring_soon_count'] as int? ?? 0,
       lowStockMedicines: json['low_stock_medicines'] as int? ?? 0,
       totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 0.0,
       cancelledSales: json['cancelled_sales'] as int? ?? 0,
@@ -315,9 +321,11 @@ class DashboardStats {
   Map<String, dynamic> toJson() {
     return {
       'total_medicines': totalMedicines,
+      'total_sales_count': totalSalesCount,
       'weekly_sales': weeklySales,
       'total_suppliers': totalSuppliers,
       'expired_medicines': expiredMedicines,
+      'expiring_soon_count': expiringSoonCount,
       'low_stock_medicines': lowStockMedicines,
       'total_revenue': totalRevenue,
       'cancelled_sales': cancelledSales,

@@ -8,8 +8,9 @@ import 'package:frontend1/widgets/layout/app_sidebar.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget child;
+  final bool noPadding;
 
-  const MainLayout({super.key, required this.child});
+  const MainLayout({super.key, required this.child, this.noPadding = false});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
@@ -62,10 +63,12 @@ class _MainLayoutState extends State<MainLayout> {
                   children: [
                     const AppHeader(),
                     Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.all(context.isMobile ? 16 : 24),
-                        child: widget.child,
-                      ),
+                      child: widget.noPadding
+                          ? widget.child
+                          : Padding(
+                              padding: EdgeInsets.all(context.isMobile ? 16 : 24),
+                              child: widget.child,
+                            ),
                     ),
                   ],
                 ),

@@ -2,7 +2,7 @@
 Security utilities for password hashing and JWT token management.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 import bcrypt
@@ -13,7 +13,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration from environment
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-change-this-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    import sys
+    if not getattr(sys, "frozen", False):
+        # Mode développement : utiliser une clé par défaut (NON sécurisée)
+        SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
+        print("[WARNING] SECRET_KEY non définie ! Utilisation d'une clé de développement NON sécurisée.")
+    else:
+        raise RuntimeError("FATAL: La variable d'environnement SECRET_KEY n'est pas définie !")
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720"))
 
@@ -81,9 +90,9 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     
     # Set expiration time
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     # Add expiration to token data
     to_encode.update({"exp": expire})

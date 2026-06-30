@@ -12,12 +12,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 # ── Import des routes ─────────────────────────────────────────────────────────
-from app.routes import (
-    auth_router, metrics_router, stock_router, config_router,
-    suppliers_router, sales_router, dashboard_router, reports_router,
-    settings_router, admin_router, users_router, customers_router,
-    license_router, medicine_pricing_router, pos_router, sync_router,
-)
+from app.routes.auth import router as auth_router
+from app.routes.metrics import router as metrics_router
+from app.routes.stock import router as stock_router
+from app.routes.config import router as config_router
+from app.routes.suppliers import router as suppliers_router
+from app.routes.sales import router as sales_router
+from app.routes.dashboard import router as dashboard_router
+from app.routes.reports import router as reports_router
+from app.routes.settings import router as settings_router
+from app.routes.admin import router as admin_router
+from app.routes.users import router as users_router
+from app.routes.customers import router as customers_router
+from app.routes.medicine_pricing import router as medicine_pricing_router
+from app.routes.pos import router as pos_router
+
+# Routers optionnels (peuvent ne pas exister sur Render selon la version)
+try:
+    from app.routes.license import router as license_router
+    _has_license = True
+except ImportError:
+    license_router = None
+    _has_license = False
+
+try:
+    from app.routes.sync import router as sync_router
+    _has_sync = True
+except ImportError:
+    sync_router = None
+    _has_sync = False
+
 from app.database import init_local_db
 
 

@@ -8,9 +8,13 @@ import 'package:frontend1/providers/language_provider.dart';
 import 'package:frontend1/providers/cart_provider.dart';
 import 'package:frontend1/providers/license_provider.dart';
 import 'package:frontend1/screens/auth/login_screen.dart';
+import 'package:frontend1/screens/auth/setup_screen.dart';
+import 'package:frontend1/screens/auth/change_password_screen.dart';
 import 'package:frontend1/screens/layout/main_layout.dart';
 import 'package:frontend1/screens/dashboard/dashboard_page.dart';
 import 'package:frontend1/screens/stock/stock_page.dart';
+import 'package:frontend1/screens/stock/stock_movements_page.dart';
+import 'package:frontend1/screens/medicine_pricing/medicine_pricing_page.dart';
 import 'package:frontend1/screens/pos/pos_page.dart';
 import 'package:frontend1/screens/sales/sales_history_page.dart'; // Import Sales
 import 'package:frontend1/screens/reports/reports_page.dart';
@@ -85,8 +89,9 @@ class PharmacApp extends StatelessWidget {
                   '/login': (context) => const LoginScreen(),
                   '/dashboard': (context) =>
                       const MainLayout(child: DashboardPage()),
-                  '/stock': (context) => const MainLayout(child: StockPage()),
-                  '/pos': (context) => const MainLayout(child: POSPage()),
+                  '/stock': (context) =>
+                      const MainLayout(child: _StockWrapper()),
+                  '/pos': (context) => const MainLayout(child: POSPage(), noPadding: true),
                   '/sales-history': (context) =>
                       const MainLayout(child: SalesHistoryPage()),
                   '/reports': (context) =>
@@ -99,6 +104,11 @@ class PharmacApp extends StatelessWidget {
                       const MainLayout(child: SettingsPage()),
                   '/super-admin': (context) =>
                       const MainLayout(child: SuperAdminPage()),
+                  '/setup': (context) => const SetupScreen(),
+                  '/change-password': (context) =>
+                      const ChangePasswordScreen(),
+                  '/stock-movements': (context) =>
+                      const MainLayout(child: StockMovementsPage()),
                 },
               );
             },
@@ -122,12 +132,23 @@ class AuthWrapper extends StatelessWidget {
           return const SplashScreen();
         }
 
-        // Si authentifié, aller au dashboard
+        // Si authentifié
         if (authProvider.isAuthenticated) {
+          // Première installation : wizard de configuration (Super Admin)
+          if (authProvider.isFirstSetup && authProvider.user?.isSuperAdmin == true) {
+            return const SetupScreen();
+          }
+
+          // Utilisateur doit changer son mot de passe (première connexion)
+          if (authProvider.mustChangePassword) {
+            return const ChangePasswordScreen();
+          }
+
+          // Normal : aller au dashboard
           return const MainLayout(child: DashboardPage());
         }
 
-        // Sinon, afficher la page de login
+        // Non authentifié : page de login
         return const LoginScreen();
       },
     );
@@ -179,5 +200,15 @@ class SplashScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Wrapper pour afficher MedicinePricingPage comme page Stock par défaut
+class _StockWrapper extends StatelessWidget {
+  const _StockWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MedicinePricingPage();
   }
 }

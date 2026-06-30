@@ -18,7 +18,6 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
   final _contactCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
   
   bool _isLoading = false;
   final SupplierService _supplierService = SupplierService();
@@ -31,7 +30,6 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
       _contactCtrl.text = widget.supplier!.contact;
       _phoneCtrl.text = widget.supplier!.phone;
       _emailCtrl.text = widget.supplier!.email;
-      _addressCtrl.text = widget.supplier!.address;
     }
   }
 
@@ -41,7 +39,6 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
     _contactCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
-    _addressCtrl.dispose();
     super.dispose();
   }
 
@@ -50,12 +47,12 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
 
     setState(() => _isLoading = true);
     try {
+      // Envoyer null pour les champs optionnels vides (EmailStr rejette "")
       final data = {
-        'name': _nameCtrl.text,
-        'contact': _contactCtrl.text,
-        'phone': _phoneCtrl.text,
-        'email': _emailCtrl.text,
-        'address': _addressCtrl.text,
+        'name': _nameCtrl.text.trim(),
+        'contact_name': _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        'email': _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
       };
 
       if (widget.supplier == null) {
@@ -94,11 +91,10 @@ class _SupplierFormDialogState extends State<SupplierFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildInput('Nom', _nameCtrl, required: true),
-              _buildInput('Contact (Nom Personne)', _contactCtrl),
+              _buildInput('Nom *', _nameCtrl, required: true),
+              _buildInput('Personne de contact', _contactCtrl),
               _buildInput('Téléphone', _phoneCtrl, type: TextInputType.phone),
-              _buildInput('Email', _emailCtrl, type: TextInputType.emailAddress),
-              _buildInput('Adresse', _addressCtrl, maxLines: 2),
+              _buildInput('Email (optionnel)', _emailCtrl, type: TextInputType.emailAddress),
             ],
           ),
         ),

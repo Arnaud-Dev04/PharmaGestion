@@ -30,12 +30,14 @@ class DashboardStatsResponse(BaseModel):
     Dashboard statistics response schema.
     """
     total_medicines: int
+    total_sales_count: int = 0
     weekly_sales: float
     total_suppliers: int = 0
     total_revenue: float
     cancelled_sales: int = 0
     recent_sales: List[dict] = []
     expiring_soon: List[dict] = []
+    expiring_soon_count: int = 0
     revenue_chart: List[RevenueChartData] = Field(..., description="Daily revenue for the last 7 days")
     sales_by_day: List[SalesByDay] = Field(default=[], description="Sales aggregated by day of week")
     sales_by_hour: List[SalesByHour] = Field(default=[], description="Sales aggregated by hour of day")

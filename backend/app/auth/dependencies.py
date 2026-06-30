@@ -180,3 +180,51 @@ async def get_super_admin_user(
             detail="Access forbidden: Super Admin privileges required"
         )
     return current_user
+
+
+async def get_super_admin_user_bypass_license(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_local_db)
+) -> User:
+    """
+    Get Super Admin user WITHOUT checking license status.
+    This allows Super Admin to access license management even when license is expired.
+    
+    Args:
+        token: JWT token from Authorization header
+        db: Database session
+        
+    Returns:
+        User: Current super admin user
+        
+    Raises:
+        HTTPException: 401 if token is invalid or user not found
+        HTTPException: 403 if user is not super admin
+    """
+    # Decode token to get username
+    username = decode_token(token)
+    
+    if username is None:
+        raise credentials_exception
+    
+    # Get user from database
+    user = db.query(User).filter(User.username == username).first()
+    
+    if user is None:
+        raise credentials_exception
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user"
+        )
+    
+    # Check if user is Super Admin
+    if user.role != UserRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Super Admin privileges required"
+        )
+    
+    return user

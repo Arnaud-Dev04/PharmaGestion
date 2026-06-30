@@ -8,8 +8,8 @@ class AuthService {
   final ApiService _apiService = ApiService();
 
   /// Login avec username et password
-  /// Retourne le token JWT
-  Future<String> login(String username, String password) async {
+  /// Retourne un Map contenant le token, must_change_password et is_first_setup
+  Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       // Préparer les données en format form-urlencoded
       // Le backend FastAPI attend ce format pour OAuth2PasswordRequestForm
@@ -21,9 +21,11 @@ class AuthService {
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
 
-      // Récupérer le token
-      final accessToken = response.data['access_token'] as String;
-      return accessToken;
+      return {
+        'access_token': response.data['access_token'] as String,
+        'must_change_password': response.data['must_change_password'] as bool? ?? false,
+        'is_first_setup': response.data['is_first_setup'] as bool? ?? false,
+      };
     } on DioException catch (e) {
       // Gérer les erreurs spécifiques
       if (e.response?.statusCode == 401) {
@@ -64,6 +66,38 @@ class AuthService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Changer le mot de passe lors de la première connexion
+  Future<Map<String, dynamic>> changeInitialPassword(
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    try {
+      final response = await _apiService.post(
+        '/auth/change-initial-password',
+        data: {
+          'new_password': newPassword,
+          'confirm_password': confirmPassword,
+        },
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        final detail = e.response?.data['detail'] ?? 'Erreur de validation';
+        throw Exception(detail);
+      }
+      throw Exception('Erreur: ${e.message}');
+    }
+  }
+
+  /// Marquer la configuration initiale comme terminée (Super Admin)
+  Future<void> completeSetup() async {
+    try {
+      await _apiService.post('/auth/complete-setup');
+    } on DioException catch (e) {
+      throw Exception('Erreur: ${e.message}');
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:frontend1/models/sale.dart';
 import 'package:frontend1/services/api_service.dart';
@@ -14,7 +15,7 @@ class SalesService {
       );
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      print('[SalesService] Erreur createSale: $e');
+      debugPrint('[SalesService] Erreur createSale: $e');
       rethrow;
     }
   }
@@ -24,7 +25,7 @@ class SalesService {
     try {
       await _apiService.post('/sales/$saleId/cancel');
     } catch (e) {
-      print('[SalesService] Erreur cancelSale: $e');
+      debugPrint('[SalesService] Erreur cancelSale: $e');
       rethrow;
     }
   }
@@ -41,7 +42,7 @@ class SalesService {
       );
       return response.data as List<int>;
     } catch (e) {
-      print('[SalesService] Erreur downloadInvoice: $e');
+      debugPrint('[SalesService] Erreur downloadInvoice: $e');
       rethrow;
     }
   }
@@ -69,7 +70,7 @@ class SalesService {
       );
       return SalesHistoryResponse.fromJson(response.data);
     } catch (e) {
-      print('[SalesService] Erreur getSalesHistory: $e');
+      debugPrint('[SalesService] Erreur getSalesHistory: $e');
       rethrow;
     }
   }
@@ -93,7 +94,7 @@ class SalesService {
           .map((item) => MedicineSaleStats.fromJson(item))
           .toList();
     } catch (e) {
-      print('[SalesService] Erreur getMedicineSalesStats: $e');
+      debugPrint('[SalesService] Erreur getMedicineSalesStats: $e');
       rethrow;
     }
   }

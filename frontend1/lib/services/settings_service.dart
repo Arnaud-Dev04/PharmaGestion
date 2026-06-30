@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:frontend1/models/app_settings.dart';
 import 'package:frontend1/services/api_service.dart';
 
@@ -9,7 +10,7 @@ class SettingsService {
       final response = await _apiService.get('/settings');
       return AppSettings.fromJson(response.data);
     } catch (e) {
-      print('[SettingsService] Erreur getSettings: $e');
+      debugPrint('[SettingsService] Erreur getSettings: $e');
       rethrow;
     }
   }
@@ -22,7 +23,7 @@ class SettingsService {
       ); // ou PUT selon backend, React utilise POST ou PUT
       return AppSettings.fromJson(response.data);
     } catch (e) {
-      print('[SettingsService] Erreur updateSettings: $e');
+      debugPrint('[SettingsService] Erreur updateSettings: $e');
       rethrow;
     }
   }
@@ -43,23 +44,46 @@ class AdminService {
       );
       return response.data;
     } catch (e) {
-      print('[AdminService] Erreur resetData: $e');
+      debugPrint('[AdminService] Erreur resetData: $e');
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getLicense() async {
-    final response = await _apiService.get(
-      '/admin/license',
-    ); // Endpoint supposé
-    return response.data;
+  /// Get current license status
+  /// Public endpoint - no authentication required
+  Future<Map<String, dynamic>> getLicenseStatus() async {
+    try {
+      final response = await _apiService.get('/license/status');
+      return response.data;
+    } catch (e) {
+      debugPrint('[AdminService] Erreur getLicenseStatus: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> updateLicense(String date) async {
-    final response = await _apiService.post(
-      '/admin/license',
-      data: {'expiry_date': date},
-    );
-    return response.data;
+  /// Update license configuration (Super Admin only)
+  /// Works even when license is expired
+  Future<Map<String, dynamic>> updateLicense({
+    required String expirationDate,
+    int? warningDays,
+    String? warningMessage,
+  }) async {
+    try {
+      final data = {
+        'expiration_date': expirationDate,
+        if (warningDays != null) 'warning_days': warningDays,
+        if (warningMessage != null) 'warning_message': warningMessage,
+      };
+      
+      final response = await _apiService.put(
+        '/license/update',
+        data: data,
+      );
+      return response.data;
+    } catch (e) {
+      debugPrint('[AdminService] Erreur updateLicense: $e');
+      rethrow;
+    }
   }
 }
+

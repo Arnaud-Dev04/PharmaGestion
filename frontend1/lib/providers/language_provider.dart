@@ -66,11 +66,12 @@ class LanguageProvider with ChangeNotifier {
       'recentSales': 'Ventes Récentes',
       'topProducts': 'Produits les Plus Vendus',
       'totalSales': 'Total Ventes',
+      'totalMedicines': 'Total Médicaments',
       'expiringSoon': 'Expirant Bientôt',
       'lowStock': 'Stock Faible',
 
       // Stock
-      'stockManagement': 'Gestion du Stock',
+      'stockManagement': 'Médicaments',
       'stockSubtitle': 'Gérez vos médicaments et inventaire',
       'addMedicine': 'Ajouter un médicament',
       'editMedicine': 'Modifier le médicament',
@@ -117,6 +118,11 @@ class LanguageProvider with ChangeNotifier {
       'insurance': 'Assurance',
       'pay': 'Payer',
       'paymentMethod': 'Mode de paiement',
+      'saleSuccess': 'Vente réussie !',
+      'invoiceGenerated': 'Facture générée avec succès',
+      'printInvoice': 'Imprimer la facture',
+      'invoicePreview': 'Aperçu Facture',
+      'nif': 'NIF',
 
       // Sales History
       'salesHistoryTitle': 'Historique des Ventes',
@@ -369,6 +375,7 @@ class LanguageProvider with ChangeNotifier {
       'recentSales': 'Recent Sales',
       'topProducts': 'Top Selling Products',
       'totalSales': 'Total Sales',
+      'totalMedicines': 'Total Medicines',
       'expiringSoon': 'Expiring Soon',
       'lowStock': 'Low Stock',
 
@@ -420,6 +427,11 @@ class LanguageProvider with ChangeNotifier {
       'insurance': 'Insurance',
       'pay': 'Pay',
       'paymentMethod': 'Payment Method',
+      'saleSuccess': 'Sale successful!',
+      'invoiceGenerated': 'Invoice generated successfully',
+      'printInvoice': 'Print invoice',
+      'invoicePreview': 'Invoice Preview',
+      'nif': 'TIN',
 
       // Sales History
       'salesHistoryTitle': 'Sales History',
@@ -671,7 +683,7 @@ class LanguageProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('[LanguageProvider] Erreur lors du chargement de la langue: $e');
+      debugPrint('[LanguageProvider] Erreur lors du chargement de la langue: $e');
     }
   }
 
@@ -681,7 +693,7 @@ class LanguageProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_localeKey, languageCode);
     } catch (e) {
-      print('[LanguageProvider] Erreur lors de la sauvegarde de la langue: $e');
+      debugPrint('[LanguageProvider] Erreur lors de la sauvegarde de la langue: $e');
     }
   }
 }

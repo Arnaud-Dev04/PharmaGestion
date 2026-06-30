@@ -41,8 +41,9 @@ class SalesByDayChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  if (value < 0 || value >= data.length)
+                  if (value < 0 || value >= data.length) {
                     return const SizedBox.shrink();
+                  }
                   final dayName = data[value.toInt()].day;
                   // Map English/Full names to French short names if needed, or just use first 3 chars
                   // Assuming backend returns English names "Monday", etc.
@@ -98,7 +99,7 @@ class SalesByDayChart extends StatelessWidget {
                   ),
                   children: [
                     TextSpan(
-                      text: 'F${rod.toY.toInt()}',
+                      text: '${rod.toY.toInt()} FBu',
                       style: TextStyle(
                         color: AppTheme.primaryColor,
                         fontWeight: FontWeight.w500,
@@ -253,7 +254,7 @@ class SalesByHourChart extends StatelessWidget {
                     ),
                     children: [
                       TextSpan(
-                        text: 'F${spot.y.toInt()}',
+                        text: '${spot.y.toInt()} FBu',
                         style: const TextStyle(
                           color: Colors.orange,
                           fontWeight: FontWeight.w500,

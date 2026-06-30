@@ -13,6 +13,10 @@ from app.models.restock import RestockOrder, RestockItem, RestockStatus
 from app.models.settings import Settings
 from app.models.sync_log import SyncLog, SyncLogStatus
 from app.models.sync_queue import SyncQueue
+from app.models.batch import Batch
+from app.models.pos_sale import POSSale, POSSaleItem
+from app.models.stock_movement import StockMovement
+from app.models.medicine_pricing import MedicinePricing
 
 __all__ = [
     # Base
@@ -52,4 +56,16 @@ __all__ = [
     "SyncLog",
     "SyncLogStatus",
     "SyncQueue",
+    
+    # Batch / POS
+    "Batch",
+    "POSSale",
+    "POSSaleItem",
+    
+    # Stock Movement
+    "StockMovement",
+    
+    # Medicine Pricing
+    "MedicinePricing",
 ]
+

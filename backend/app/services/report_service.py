@@ -285,7 +285,7 @@ def generate_financial_pdf(db: Session, start_date: Optional[date] = None, end_d
     
     # Footer - space for signature and stamp
     y_position = 3 * cm
-    c.setFont("Helvetica-Italic", 8)
+    c.setFont("Helvetica-Oblique", 8)
     c.drawCentredString(width / 2, y_position, "Signature & Cachet")
     
     c.save()
@@ -391,7 +391,7 @@ def generate_stock_pdf(db: Session) -> BytesIO:
     
     # Footer
     y_position = 2.5 * cm
-    c.setFont("Helvetica-Italic", 8)
+    c.setFont("Helvetica-Oblique", 8)
     c.drawCentredString(width / 2, y_position, "Signature & Cachet")
     
     c.save()
@@ -503,7 +503,7 @@ def generate_sales_pdf(db: Session, start_date: date, end_date: date) -> BytesIO
     
     # Footer
     y_position = 2.5 * cm
-    c.setFont("Helvetica-Italic", 8)
+    c.setFont("Helvetica-Oblique", 8)
     c.drawCentredString(width / 2, y_position, "Signature & Cachet")
     
     c.save()

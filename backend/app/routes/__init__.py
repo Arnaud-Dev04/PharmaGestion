@@ -12,6 +12,10 @@ from .settings import router as settings_router
 from .admin import router as admin_router
 from .users import router as users_router
 from .customers import router as customers_router
+from .license import router as license_router
+from .medicine_pricing import router as medicine_pricing_router
+from .pos import router as pos_router
+from .sync import router as sync_router
 
 __all__ = [
     "auth_router",
@@ -26,4 +30,9 @@ __all__ = [
     "admin_router",
     "users_router",
     "customers_router",
+    "license_router",
+    "medicine_pricing_router",
+    "pos_router",
+    "sync_router",
 ]
+

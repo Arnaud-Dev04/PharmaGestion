@@ -161,6 +161,23 @@ class MedicineResponse(BaseModel):
     blisters_per_box: int
     units_per_blister: int
     units_per_packaging: int
+    
+    # Nouveaux champs enrichis
+    code_barres: Optional[str] = None
+    dci: Optional[str] = None
+    forme_galenique: Optional[str] = None
+    fournisseur: Optional[str] = None
+    
+    # Prix multi-niveaux
+    prix_achat_unite: float = 0.0
+    prix_vente_unite: float = 0.0
+    prix_achat_plaquette: float = 0.0
+    prix_vente_plaquette: float = 0.0
+    prix_achat_boite: float = 0.0
+    prix_vente_boite: float = 0.0
+    prix_achat_carton: float = 0.0
+    prix_vente_carton: float = 0.0
+    
     created_at: datetime
     updated_at: datetime
     

@@ -206,27 +206,34 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisSpacing: 24,
           childAspectRatio: 2.5,
           children: [
-            // 1. Total Medicines
+            // 1. Total Medicines (stock)
             StatsCard(
               icon: Icons.inventory_2,
-              label: languageProvider.translate('totalSales'),
+              label: languageProvider.translate('totalMedicines'),
               value: _stats!.totalMedicines.toString(),
               iconBgColor: Colors.blue,
+              onTap: () => _showModal(context, 'totalMedicines', languageProvider),
+            ),
+
+            // 2. Total Sales Count
+            StatsCard(
+              icon: Icons.receipt_long,
+              label: languageProvider.translate('totalSales'),
+              value: _stats!.totalSalesCount.toString(),
+              iconBgColor: Colors.indigo,
               onTap: () => _showModal(context, 'totalSales', languageProvider),
             ),
 
-            // 2. Weekly Sales
+            // 3. Weekly Sales (revenue 7j)
             StatsCard(
               icon: Icons.shopping_cart,
-              label: languageProvider.translate(
-                'weeklySales',
-              ), // Changed from revenue to weeklySales
-              value: _stats!.weeklySales.toString(),
+              label: languageProvider.translate('weeklySales'),
+              value: '${_stats!.weeklySales.toStringAsFixed(0)} FBu',
               iconBgColor: AppTheme.successColor,
               onTap: () => _showModal(context, 'weeklySales', languageProvider),
             ),
 
-            // 3. Suppliers
+            // 4. Suppliers
             StatsCard(
               icon: Icons.local_shipping,
               label: languageProvider.translate('suppliers'),
@@ -235,17 +242,17 @@ class _DashboardPageState extends State<DashboardPage> {
               onTap: () => _showModal(context, 'suppliers', languageProvider),
             ),
 
-            // 4. Expiring Soon
+            // 5. Expiring Soon (not already expired)
             StatsCard(
               icon: Icons.warning_amber,
               label: languageProvider.translate('expiringSoon'),
-              value: _stats!.expiredMedicines.toString(),
+              value: _stats!.expiringSoonCount.toString(),
               iconBgColor: AppTheme.warningColor,
               onTap: () =>
                   _showModal(context, 'expiringSoon', languageProvider),
             ),
 
-            // 5. Low Stock
+            // 6. Low Stock
             StatsCard(
               icon: Icons.error_outline,
               label: languageProvider.translate('lowStock'),
@@ -254,17 +261,17 @@ class _DashboardPageState extends State<DashboardPage> {
               onTap: () => _showModal(context, 'lowStock', languageProvider),
             ),
 
-            // 6. Total Revenue
+            // 7. Total Revenue
             StatsCard(
               icon: Icons.attach_money,
               label: languageProvider.translate('revenue'),
-              value: 'F${_stats!.totalRevenue.toStringAsFixed(2)}',
+              value: '${_stats!.totalRevenue.toStringAsFixed(0)} FBu',
               iconBgColor: Colors.teal,
               onTap: () =>
                   _showModal(context, 'totalRevenue', languageProvider),
             ),
 
-            // 7. Cancelled Sales
+            // 8. Cancelled Sales
             StatsCard(
               icon: Icons.cancel,
               label: languageProvider.translate('cancelled'),
@@ -274,11 +281,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   _showModal(context, 'cancelledSales', languageProvider),
             ),
 
-            // 8. Top Selling Products (New Card)
+            // 9. Top Selling Products
             StatsCard(
               icon: Icons.star,
               label: languageProvider.translate('topProducts'),
-              value: '15',
+              value: _stats!.topSellingProducts.length.toString(),
               iconBgColor: Colors.amber,
               onTap: () => _showModal(context, 'topProducts', languageProvider),
             ),
@@ -317,6 +324,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   String _getModalTitle(String type, LanguageProvider lp) {
     switch (type) {
+      case 'totalMedicines':
+        return lp.translate('totalMedicines');
       case 'totalSales':
         return lp.translate('totalSales');
       case 'weeklySales':
@@ -340,25 +349,49 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildModalContent(String type, LanguageProvider lp) {
     switch (type) {
-      case 'totalSales':
+      case 'totalMedicines':
         return Column(
           children: [
             _buildSummaryBox(
               Colors.blue,
-              'Total de médicaments',
+              lp.translate('totalMedicines'),
               _stats!.totalMedicines.toString(),
             ),
             const SizedBox(height: 16),
-            if (_stats!.topSellingProducts.isNotEmpty) ...[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/stock');
+              },
+              child: Text(lp.translate('actions')),
+            ),
+          ],
+        );
+      case 'totalSales':
+        return Column(
+          children: [
+            _buildSummaryBox(
+              Colors.indigo,
+              lp.translate('totalSales'),
+              _stats!.totalSalesCount.toString(),
+            ),
+            const SizedBox(height: 16),
+            if (_stats!.recentSales.isNotEmpty) ...[
               Text(
-                lp.translate('topProducts'),
+                lp.translate('recentSales'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               _buildTable(
-                headers: ['Nom', 'Code', 'Qté'],
-                rows: _stats!.topSellingProducts
-                    .map((p) => [p.name, p.code, p.totalSold.toString()])
+                headers: ['Date', 'Montant'],
+                rows: _stats!.recentSales
+                    .take(5)
+                    .map(
+                      (s) => [
+                        DateFormat('dd/MM HH:mm').format(s.date),
+                        '${s.totalAmount.toStringAsFixed(0)} FBu',
+                      ],
+                    )
                     .toList(),
               ),
             ],
@@ -386,7 +419,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     .map(
                       (s) => [
                         DateFormat('dd/MM HH:mm').format(s.date),
-                        'F${s.totalAmount.toStringAsFixed(0)}',
+                        '${s.totalAmount.toStringAsFixed(0)} FBu',
                       ],
                     )
                     .toList(),
@@ -418,7 +451,7 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildSummaryBox(
               AppTheme.warningColor,
               lp.translate('expiringSoon'),
-              _stats!.expiredMedicines.toString(),
+              _stats!.expiringSoonCount.toString(),
             ),
             const SizedBox(height: 16),
             if (_stats!.expiringSoon.isNotEmpty)
@@ -483,7 +516,7 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildSummaryBox(
               Colors.teal,
               lp.translate('revenue'),
-              'F${_stats!.totalRevenue.toStringAsFixed(0)}',
+              '${_stats!.totalRevenue.toStringAsFixed(0)} FBu',
             ),
             const SizedBox(height: 16),
             RevenueChart(data: _stats!.revenueChart),
@@ -491,36 +524,39 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       case 'cancelledSales':
         // Calculate dates for filter
-        String? startDate;
-        String? endDate;
-        final dateFormat = DateFormat('yyyy-MM-dd');
+        String? csStartDate;
+        String? csEndDate;
+        final csDateFormat = DateFormat('yyyy-MM-dd');
         if (_selectedDateRange != null) {
-          startDate = dateFormat.format(_selectedDateRange!.start);
-          endDate = dateFormat.format(_selectedDateRange!.end);
+          csStartDate = csDateFormat.format(_selectedDateRange!.start);
+          csEndDate = csDateFormat.format(_selectedDateRange!.end);
         } else if (_selectedPeriod > 0) {
           final end = DateTime.now();
           final start = end.subtract(Duration(days: _selectedPeriod));
-          startDate = dateFormat.format(start);
-          endDate = dateFormat.format(end);
+          csStartDate = csDateFormat.format(start);
+          csEndDate = csDateFormat.format(end);
         }
 
         return FutureBuilder<List<CancelledSale>>(
           future: _dashboardService.getCancelledSales(
-            startDate: startDate,
-            endDate: endDate,
-          ), // Utilise la méthode existante avec filtres
+            startDate: csStartDate,
+            endDate: csEndDate,
+          ),
           builder: (ctx, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
-            if (snapshot.hasError)
+            }
+            if (snapshot.hasError) {
               return Text(
                 'Erreur: ${snapshot.error}',
                 style: const TextStyle(color: Colors.red),
               );
+            }
             final sales = snapshot.data ?? [];
             if (sales.isEmpty) return Text(lp.translate('noSales'));
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSummaryBox(
                   Colors.red[700]!,
@@ -528,26 +564,117 @@ class _DashboardPageState extends State<DashboardPage> {
                   sales.length.toString(),
                 ),
                 const SizedBox(height: 16),
-                _buildTable(
-                  headers: [
-                    'Utilisateur',
-                    'Date',
-                    'Meds',
-                    'Montant',
-                  ], // Changed User header
-                  rows: sales
-                      .map(
-                        (s) => [
-                          s.userName ?? s.userId.toString(),
-                          DateFormat(
-                            'dd/MM HH:mm',
-                          ).format(s.cancelledAt ?? s.date),
-                          s.items.map((i) => i.medicineName).join(', '),
-                          'F${s.totalAmount.toStringAsFixed(0)}',
+                // Detailed list of each cancelled sale
+                ...sales.map((s) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header: Invoice code + amount
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${s.totalAmount.toStringAsFixed(0)} FBu',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.red,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                lp.translate('cancelled'),
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        // Who cancelled
+                        Row(
+                          children: [
+                            Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${lp.translate('cancelledBy')}: ',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                            ),
+                            Text(
+                              s.userName ?? 'ID: ${s.userId}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // When cancelled
+                        Row(
+                          children: [
+                            Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${lp.translate('cancelledAt')}: ',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                            ),
+                            Text(
+                              DateFormat('dd/MM/yyyy HH:mm').format(s.cancelledAt ?? s.date),
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Sale date
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${lp.translate('date')} vente: ',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                            ),
+                            Text(
+                              DateFormat('dd/MM/yyyy HH:mm').format(s.date),
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        // Medicines in the sale
+                        if (s.items.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.medical_services, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  s.items.map((i) => i.medicineName).join(', '),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
-                      )
-                      .toList(),
-                ),
+                      ],
+                    ),
+                  );
+                }),
               ],
             );
           },
@@ -765,7 +892,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 rows: _stats!.recentSales.map((sale) {
                   return [
                     DateFormat('dd/MM/yyyy HH:mm', 'fr_FR').format(sale.date),
-                    'F${sale.totalAmount.toStringAsFixed(2)}',
+                    '${sale.totalAmount.toStringAsFixed(2)} FBu',
                   ];
                 }).toList(),
               ),

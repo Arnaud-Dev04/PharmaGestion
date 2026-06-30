@@ -7,6 +7,8 @@ from . import sales_service
 from . import pdf_service
 from . import dashboard_service
 from . import report_service
+from . import medicine_pricing_service
+from . import pos_service
 
 __all__ = [
     "medicine_service",
@@ -15,4 +17,6 @@ __all__ = [
     "sales_service",
     "pdf_service",
     "dashboard_service",
+    "medicine_pricing_service",
+    "pos_service",
 ]

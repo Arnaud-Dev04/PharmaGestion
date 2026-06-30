@@ -16,10 +16,9 @@ import sys
 import threading
 import socket
 import time
-import webview
-import ctypes  # Ajout pour cacher la console
+import ctypes
 from contextlib import asynccontextmanager
-import json
+import subprocess
 
 # FORCE HIDE CONSOLE ON STARTUP (ONLY IN FROZEN MODE)
 if getattr(sys, "frozen", False) and sys.platform == "win32":
@@ -53,29 +52,11 @@ async def lifespan(app: FastAPI):
     # Startup
     print("[*] Starting Pharmacy Management System...")
     print("[*] Initializing local database...")
-    # #region agent log
-    try:
-        with open(r'c:\Pharma_logiciels_version_01\.cursor\debug.log', 'a', encoding='utf-8') as f:
-            f.write(json.dumps({"id": "log_lifespan_start", "timestamp": int(time.time() * 1000), "location": "main.py:53", "message": "Lifespan startup started", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
-    except: pass
-    # #endregion
     try:
         init_local_db()
-        # #region agent log
-        try:
-            with open(r'c:\Pharma_logiciels_version_01\.cursor\debug.log', 'a', encoding='utf-8') as f:
-                f.write(json.dumps({"id": "log_db_init_success", "timestamp": int(time.time() * 1000), "location": "main.py:58", "message": "Database initialization succeeded", "data": {}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
-        except: pass
-        # #endregion
         print("[OK] Local database initialized successfully!")
         print("[OK] Application started successfully!")
     except Exception as e:
-        # #region agent log
-        try:
-            with open(r'c:\Pharma_logiciels_version_01\.cursor\debug.log', 'a', encoding='utf-8') as f:
-                f.write(json.dumps({"id": "log_db_init_error", "timestamp": int(time.time() * 1000), "location": "main.py:60", "message": "Database initialization error", "data": {"error": str(e), "type": type(e).__name__}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "B"}) + "\n")
-        except: pass
-        # #endregion
         print(f"[ERROR] Error during startup: {e}")
     yield
     # Shutdown (if needed)
@@ -100,7 +81,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # Flutter Web dev server (random ports)
+        "http://localhost:*",
+    ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -108,55 +97,15 @@ app.add_middleware(
 
 
 # =========================
-# LICENSE MIDDLEWARE
+# HEALTH CHECK
 # =========================
-
-@app.middleware("http")
-async def check_license_middleware(request: Request, call_next):
-
-    if (
-        request.method == "OPTIONS"
-        or request.url.path.startswith("/assets")
-        or request.url.path in [
-            "/", "/index.html",
-            "/license/status",
-            "/health",
-            "/docs",
-            "/redoc",
-            "/openapi.json"
-        ]
-    ):
-        return await call_next(request)
-
-    # License check is now handled in dependencies.py to allow Super Admin access
-    # and to use database session for expiration date check.
-    
-    return await call_next(request)
-
-@app.get("/license/status", tags=["License"])
-async def get_license_status(db: Session = Depends(get_local_db)):
-    """
-    Get current license status.
-    Public endpoint - no authentication required.
-    Returns license validity and expiration information.
-    """
-    status = license_service.get_license_status(db)
-    
-    # Map backend format to frontend format
-    is_expired = status["status"] == "expired"
-    is_valid = status["status"] in ["valid", "warning"]
-    days_remaining = status.get("days_remaining", 0)
-    
-    return {
-        "is_valid": is_valid,
-        "is_expired": is_expired,
-        "days_remaining": days_remaining,
-        "message": status.get("message", "")
-    }
+# Note: La vérification de licence est gérée dans dependencies.py
+# pour permettre l'accès Super Admin et utiliser la session DB.
 
 @app.get("/health", tags=["System"])
 async def health_check():
     return {"status": "ok"}
+
 
 # =========================
 # ROUTES
@@ -174,7 +123,11 @@ from app.routes import (
     settings_router,
     admin_router,
     users_router,
-    customers_router
+    customers_router,
+    license_router,
+    medicine_pricing_router,
+    pos_router,
+    sync_router,
 )
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
@@ -189,6 +142,11 @@ app.include_router(settings_router, prefix="/settings", tags=["Settings"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(customers_router, prefix="/customers", tags=["Customers"])
+app.include_router(license_router, prefix="/license", tags=["License"])
+app.include_router(medicine_pricing_router, prefix="/pricing", tags=["Pricing"])
+app.include_router(pos_router, prefix="/pos", tags=["POS"])
+app.include_router(sync_router, prefix="/sync", tags=["Sync"])
+
 
 # =========================
 # SERVE REACT FRONTEND
@@ -306,6 +264,26 @@ def find_free_port(start=8000, end=8200):
                 return port
     raise RuntimeError("No free port available")
 
+def is_port_in_use(port):
+    """Check if a port is already in use."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+def kill_process_on_port(port):
+    """Kill any process using the specified port (Windows only)."""
+    try:
+        # Simple approach: kill all PharmaBackend processes
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "PharmaBackend.exe"],
+            capture_output=True, timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        )
+        time.sleep(2)
+        return True
+    except Exception as e:
+        print(f"[WARNING] Could not kill process on port {port}: {e}")
+    return False
+
 def run_api(port):
     uvicorn.run(
         app,
@@ -326,22 +304,22 @@ if __name__ == "__main__":
     # Par défaut, on force le port 8000 pour la production
     PORT = 8000
     
-    print(f"[*] ===== DÉMARRAGE DE PHARMAGESTION BACKEND =====")
+    print(f"[*] ===== DEMARRAGE DE PHARMAGESTION BACKEND =====")
     print(f"[*] Frozen mode: {IS_FROZEN}")
     print(f"[*] Target Port: {PORT}")
 
-    # En mode frozen, on se comporte toujours comme un serveur API pour le frontend
-    # On évite d'ouvrir une webview Python car le frontend Flutter/Electron s'en charge
     if IS_FROZEN:
-        print(f"[*] Démarrage en mode PRODUCTION (Frozen)")
-        print(f"[*] Le serveur écoute sur http://127.0.0.1:{PORT}")
+        print(f"[*] Demarrage en mode PRODUCTION (Frozen)")
         
-        # #region agent log
-        try:
-            with open(r'c:\Pharma_logiciels_version_01\.cursor\debug.log', 'a', encoding='utf-8') as f:
-                f.write(json.dumps({"id": "log_server_start_attempt", "timestamp": int(time.time() * 1000), "location": "main.py:339", "message": "Attempting to start server", "data": {"port": PORT, "host": "127.0.0.1"}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
-        except: pass
-        # #endregion
+        # Kill any existing process on port 8000
+        if is_port_in_use(PORT):
+            print(f"[WARNING] Port {PORT} already in use, attempting to free it...")
+            kill_process_on_port(PORT)
+            time.sleep(1)
+            if is_port_in_use(PORT):
+                print(f"[ERROR] Could not free port {PORT}")
+        
+        print(f"[*] Le serveur ecoute sur http://127.0.0.1:{PORT}")
         try:
             uvicorn.run(
                 app,
@@ -350,33 +328,22 @@ if __name__ == "__main__":
                 reload=False
             )
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r'c:\Pharma_logiciels_version_01\.cursor\debug.log', 'a', encoding='utf-8') as f:
-                    f.write(json.dumps({"id": "log_server_start_error", "timestamp": int(time.time() * 1000), "location": "main.py:346", "message": "Failed to start server on port 8000", "data": {"error": str(e), "type": type(e).__name__, "port": PORT}, "sessionId": "debug-session", "runId": "run1", "hypothesisId": "A"}) + "\n")
-            except: pass
-            # #endregion
             print(f"[ERROR] CRITICAL: Failed to start server on port {PORT}")
             print(f"[ERROR] Detail: {e}")
             raise
             
     else:
         # Mode développement (python main.py)
-        # On garde le comportement dynamique pratique pour le dev
         try:
-            # Essayer d'abord 8000
             PORT = 8000
-            print(f"[*] Démarrage en mode DEV sur port {PORT}")
+            print(f"[*] Demarrage en mode DEV sur port {PORT}")
             uvicorn.run(
-                app,
+                "main:app",
                 host="127.0.0.1",
                 port=PORT,
                 reload=True
             )
-        except:
-            # Si occupé, chercher un port libre
+        except OSError:
             PORT = find_free_port()
-            print(f"[*] Port 8000 occupé, bascule sur {PORT}")
+            print(f"[*] Port 8000 occupe, bascule sur {PORT}")
             run_api(PORT)
-            webview.create_window("Pharmacy Dev", f"http://127.0.0.1:{PORT}")
-            webview.start()

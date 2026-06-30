@@ -64,7 +64,7 @@ class RevenueChart extends StatelessWidget {
                   interval: _calculateInterval(data),
                   getTitlesWidget: (value, meta) {
                     return Text(
-                      'F${value.toInt()}',
+                      '${value.toInt()} FBu',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark
@@ -170,7 +170,7 @@ class RevenueChart extends StatelessWidget {
                       ),
                       children: [
                         TextSpan(
-                          text: 'F${point.amount.toStringAsFixed(0)}',
+                          text: '${point.amount.toStringAsFixed(0)} FBu',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: isDark

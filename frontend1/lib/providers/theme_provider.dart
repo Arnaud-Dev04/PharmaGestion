@@ -45,7 +45,7 @@ class ThemeProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('[ThemeProvider] Erreur lors du chargement du thème: $e');
+      debugPrint('[ThemeProvider] Erreur lors du chargement du thème: $e');
     }
   }
 
@@ -58,7 +58,7 @@ class ThemeProvider with ChangeNotifier {
         _themeMode == ThemeMode.dark ? 'dark' : 'light',
       );
     } catch (e) {
-      print('[ThemeProvider] Erreur lors de la sauvegarde du thème: $e');
+      debugPrint('[ThemeProvider] Erreur lors de la sauvegarde du thème: $e');
     }
   }
 }

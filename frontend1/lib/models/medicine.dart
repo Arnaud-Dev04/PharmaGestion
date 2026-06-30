@@ -11,16 +11,29 @@ class Medicine {
   final int blistersPerBox; // Plaquettes par boîte
   final int unitsPerBlister; // Unités par plaquette
   final int unitsPerPackaging; // Calculé par backend
-  final double priceBuy; // Prix d'achat par boîte
-  final double priceSell; // Prix de vente par boîte
+  final double priceBuy; // Prix d'achat par boîte (legacy)
+  final double priceSell; // Prix de vente par boîte (legacy)
+  // Prix multi-niveaux
+  final double prixAchatUnite;
+  final double prixVenteUnite;
+  final double prixAchatPlaquette;
+  final double prixVentePlaquette;
+  final double prixAchatBoite;
+  final double prixVenteBoite;
+  final double prixAchatCarton;
+  final double prixVenteCarton;
   final int quantity; // Quantité totale EN UNITÉS
   final int minStockAlert; // Seuil d'alerte stock
   final int expiryAlertThreshold; // Seuil d'alerte expiration (jours)
   final DateTime? expiryDate; // Date péremption
+  final String? dci;
+  final String? formeGalenique;
+  final String? fournisseur;
   final bool isLowStock; // Calculé par backend
   final bool isExpired; // Calculé par backend
   final int? familyId;
   final int? typeId;
+  final int batchCount; // Nombre de lots actifs
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -38,31 +51,67 @@ class Medicine {
     this.unitsPerPackaging = 1,
     required this.priceBuy,
     required this.priceSell,
+    this.prixAchatUnite = 0,
+    this.prixVenteUnite = 0,
+    this.prixAchatPlaquette = 0,
+    this.prixVentePlaquette = 0,
+    this.prixAchatBoite = 0,
+    this.prixVenteBoite = 0,
+    this.prixAchatCarton = 0,
+    this.prixVenteCarton = 0,
     required this.quantity,
     this.minStockAlert = 10,
     this.expiryAlertThreshold = 30,
     this.expiryDate,
+    this.dci,
+    this.formeGalenique,
+    this.fournisseur,
     this.isLowStock = false,
     this.isExpired = false,
     this.familyId,
     this.typeId,
+    this.batchCount = 0,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  // ... (formatStock kept implicitly by not touching it, but I must match regex or use context lines carefully)
-  // Let me re-target larger chunks to be safe or use multi_replace if they were scattered.
-  // The fields are close. Constructor is close.
-  // fromJson is further down.
-
-  // Helper method to format stock display
+  /// Méthode helper pour afficher le stock formaté
   String formatStock() {
-    if (packaging != null && unitsPerPackaging > 1) {
-      // Display in packaging units + remainder?
-      // For now, simple display to unblock build.
-      return "$quantity unités";
+    var remaining = quantity;
+    final parts = <String>[];
+
+    final unitsPerBox = blistersPerBox * unitsPerBlister;
+    final unitsPerCarton = boxesPerCarton * unitsPerBox;
+
+    if (unitsPerCarton > 1) {
+      final cartons = remaining ~/ unitsPerCarton;
+      if (cartons > 0) {
+        parts.add('$cartons carton${cartons > 1 ? 's' : ''}');
+        remaining %= unitsPerCarton;
+      }
     }
-    return "$quantity";
+
+    if (unitsPerBox > 1) {
+      final boxes = remaining ~/ unitsPerBox;
+      if (boxes > 0) {
+        parts.add('$boxes boîte${boxes > 1 ? 's' : ''}');
+        remaining %= unitsPerBox;
+      }
+    }
+
+    if (unitsPerBlister > 1) {
+      final blisters = remaining ~/ unitsPerBlister;
+      if (blisters > 0) {
+        parts.add('$blisters plaquette${blisters > 1 ? 's' : ''}');
+        remaining %= unitsPerBlister;
+      }
+    }
+
+    if (remaining > 0 || parts.isEmpty) {
+      parts.add('$remaining unité${remaining > 1 ? 's' : ''}');
+    }
+
+    return parts.join(', ');
   }
 
   /// Serialization depuis JSON
@@ -79,18 +128,30 @@ class Medicine {
       blistersPerBox: json['blisters_per_box'] as int? ?? 1,
       unitsPerBlister: json['units_per_blister'] as int? ?? 1,
       unitsPerPackaging: json['units_per_packaging'] as int? ?? 1,
-      priceBuy: (json['price_buy'] as num).toDouble(),
-      priceSell: (json['price_sell'] as num).toDouble(),
+      priceBuy: (json['price_buy'] as num?)?.toDouble() ?? 0.0,
+      priceSell: (json['price_sell'] as num?)?.toDouble() ?? 0.0,
+      prixAchatUnite: (json['prix_achat_unite'] as num?)?.toDouble() ?? 0.0,
+      prixVenteUnite: (json['prix_vente_unite'] as num?)?.toDouble() ?? 0.0,
+      prixAchatPlaquette: (json['prix_achat_plaquette'] as num?)?.toDouble() ?? 0.0,
+      prixVentePlaquette: (json['prix_vente_plaquette'] as num?)?.toDouble() ?? 0.0,
+      prixAchatBoite: (json['prix_achat_boite'] as num?)?.toDouble() ?? 0.0,
+      prixVenteBoite: (json['prix_vente_boite'] as num?)?.toDouble() ?? 0.0,
+      prixAchatCarton: (json['prix_achat_carton'] as num?)?.toDouble() ?? 0.0,
+      prixVenteCarton: (json['prix_vente_carton'] as num?)?.toDouble() ?? 0.0,
       quantity: (json['quantity'] as num).toInt(),
       minStockAlert: json['min_stock_alert'] as int? ?? 10,
       expiryAlertThreshold: json['expiry_alert_threshold'] as int? ?? 30,
       expiryDate: json['expiry_date'] != null
           ? DateTime.parse(json['expiry_date'] as String)
           : null,
+      dci: json['dci'] as String?,
+      formeGalenique: json['forme_galenique'] as String?,
+      fournisseur: json['fournisseur'] as String?,
       isLowStock: json['is_low_stock'] as bool? ?? false,
       isExpired: json['is_expired'] as bool? ?? false,
       familyId: json['family_id'] as int?,
       typeId: json['type_id'] as int?,
+      batchCount: json['batch_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -120,6 +181,7 @@ class Medicine {
       'is_expired': isExpired,
       'family_id': familyId,
       'type_id': typeId,
+      'batch_count': batchCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -148,6 +210,7 @@ class Medicine {
     bool? isExpired,
     int? familyId,
     int? typeId,
+    int? batchCount,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -173,6 +236,7 @@ class Medicine {
       isExpired: isExpired ?? this.isExpired,
       familyId: familyId ?? this.familyId,
       typeId: typeId ?? this.typeId,
+      batchCount: batchCount ?? this.batchCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

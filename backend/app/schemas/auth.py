@@ -62,13 +62,17 @@ class Token(BaseModel):
     """Schema for JWT token response."""
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer", description="Token type")
+    must_change_password: bool = Field(default=False, description="User must change password on first login")
+    is_first_setup: bool = Field(default=False, description="System is in first-time setup mode")
     
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                    "token_type": "bearer"
+                    "token_type": "bearer",
+                    "must_change_password": False,
+                    "is_first_setup": False
                 }
             ]
         }
@@ -90,6 +94,7 @@ class UserResponse(BaseModel):
     username: str
     role: UserRole
     is_active: bool
+    must_change_password: bool = False
     created_at: datetime
     updated_at: datetime
     
@@ -99,9 +104,10 @@ class UserResponse(BaseModel):
             "examples": [
                 {
                     "id": 1,
-                    "username": "admin",
-                    "role": "admin",
+                    "username": "arnaud",
+                    "role": "super_admin",
                     "is_active": True,
+                    "must_change_password": False,
                     "created_at": "2025-12-11T09:00:00Z",
                     "updated_at": "2025-12-11T09:00:00Z"
                 }
@@ -118,3 +124,9 @@ class UserInDB(UserResponse):
 class UserUpdatePassword(BaseModel):
     """Schema for updating user password."""
     password: str = Field(..., min_length=4, description="New password")
+
+
+class ChangeInitialPassword(BaseModel):
+    """Schema for first-login password change."""
+    new_password: str = Field(..., min_length=4, description="New password")
+    confirm_password: str = Field(..., min_length=4, description="Password confirmation")

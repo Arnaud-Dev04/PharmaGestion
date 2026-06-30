@@ -1,0 +1,41 @@
+# Exclude EVERYTHING except what Vercel needs
+# Big directories
+release/
+frontend1/
+.venv/
+venv/
+dist/
+Output/
+_ARCHIVE/
+vcredist/
+build/
+.git/
+.vscode/
+node_modules/
+
+# Backend heavy stuff
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/dist/
+backend/build/
+backend/pharmacy_local.db
+backend/test_*.py
+backend/reset_pwd.py
+backend/check_db.py
+backend/migrate_pricing.py
+backend/alembic/
+backend/*.log
+backend/*.txt
+backend/*.exe
+backend/.env
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Misc
+*.exe
+*.db
+*.log

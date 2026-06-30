@@ -10,9 +10,13 @@ class Sale {
   final DateTime? cancelledAt;
   final String? cancelledBy;
   final int? customerId;
+  final String? customerName;
   final String? customerPhone;
   final List<SaleItem> items;
   final double bonusEarned;
+  final String? insuranceProvider;
+  final String? insuranceCardId;
+  final double coveragePercent;
 
   Sale({
     required this.id,
@@ -26,32 +30,40 @@ class Sale {
     this.cancelledAt,
     this.cancelledBy,
     this.customerId,
+    this.customerName,
     this.customerPhone,
     required this.items,
     this.bonusEarned = 0.0,
+    this.insuranceProvider,
+    this.insuranceCardId,
+    this.coveragePercent = 0.0,
   });
 
   factory Sale.fromJson(Map<String, dynamic> json) {
     return Sale(
-      id: json['id'],
-      code: json['code'],
+      id: json['id'] as int,
+      code: json['code'] as String,
       totalAmount: (json['total_amount'] as num).toDouble(),
-      paymentMethod: json['payment_method'] ?? 'cash',
-      date: DateTime.parse(json['date']),
-      userId: json['user_id'],
-      userName: json['user_name'] ?? 'Inconnu',
-      status: json['status'] ?? 'completed',
+      paymentMethod: (json['payment_method'] as String?) ?? 'cash',
+      date: DateTime.parse(json['date'] as String),
+      userId: json['user_id'] as int?,
+      userName: (json['user_name'] as String?) ?? 'Inconnu',
+      status: (json['status'] as String?) ?? 'completed',
       cancelledAt: json['cancelled_at'] != null
-          ? DateTime.parse(json['cancelled_at'])
+          ? DateTime.parse(json['cancelled_at'] as String)
           : null,
-      cancelledBy: json['cancelled_by'],
-      customerId: json['customer_id'],
+      cancelledBy: json['cancelled_by'] as String?,
+      customerId: json['customer_id'] as int?,
+      customerName: json['customer_name'] as String?,
       customerPhone:
-          json['customer']?['phone'], // Extraction simplifiée depuis l'objet customer imbriqué
+          (json['customer'] as Map<String, dynamic>?)?['phone'] as String?,
       items:
-          (json['items'] as List?)?.map((i) => SaleItem.fromJson(i)).toList() ??
+          (json['items'] as List?)?.map((i) => SaleItem.fromJson(i as Map<String, dynamic>)).toList() ??
           [],
       bonusEarned: (json['bonus_earned'] as num?)?.toDouble() ?? 0.0,
+      insuranceProvider: json['insurance_provider'] as String?,
+      insuranceCardId: json['insurance_card_id'] as String?,
+      coveragePercent: (json['coverage_percent'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

@@ -194,3 +194,4 @@ Pour toute question ou problème, contactez [votre email/contact].
 **Version** : 1.0.0  
 **Dernière mise à jour** : 2025-01-17
 
+

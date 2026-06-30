@@ -1,0 +1,23 @@
+# === MINIMAL Vercel requirements ===
+# FastAPI (sans uvicorn - Vercel gère le serveur)
+fastapi==0.104.1
+python-multipart==0.0.6
+
+# Database (SQLite only - pas besoin de pymysql)
+sqlalchemy==2.0.23
+
+# Security - version LÉGÈRE sans cryptography (pure Python)
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Utilities
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# HTTP Client
+requests>=2.31.0

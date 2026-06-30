@@ -11,24 +11,22 @@ class POSPage extends StatelessWidget {
       builder: (context, constraints) {
         // Desktop View
         if (constraints.maxWidth > 900) {
-          return const Scaffold(
-            body: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: ProductGrid(),
-                  ),
+          return const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: ProductGrid(),
                 ),
-                SizedBox(
-                  width: 400,
-                  height: double.infinity,
-                  child: CartPanel(),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(
+                width: 480,
+                height: double.infinity,
+                child: CartPanel(),
+              ),
+            ],
           );
         }
 

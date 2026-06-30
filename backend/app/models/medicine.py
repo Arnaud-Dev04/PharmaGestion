@@ -44,52 +44,75 @@ class Medicine(Base, BaseModelMixin):
     """
     Main medicine/product model.
     
+    Represents a unique medication identity (e.g. "Paracétamol 500mg").
+    One Medicine can have multiple Batches (lots) and MedicinePricing entries.
+    
+    Stock is always tracked in BASE UNITS (comprimés/unités).
+    
     Attributes:
-        code: Unique product code/SKU
-        name: Medicine name
-        family_id: Reference to MedicineFamily
-        type_id: Reference to MedicineType
-        quantity: Current stock quantity
-        price_buy: Purchase price (from supplier)
-        price_sell: Selling price (to customer)
-        expiry_date: Expiration date
-        min_stock_alert: Minimum stock threshold for alerts
+        code: Unique product code/SKU (auto-generated MED-NNNN)
+        name: Medicine name (commercial)
+        code_barres: EAN/UPC barcode (scanner)
+        dci: Dénomination Commune Internationale
+        forme_galenique: Forme galénique (Comprimé, Sirop, Injectable...)
+        quantity: Current stock in BASE UNITS
+        prix_*: Multi-level pricing (last registered prices)
     """
     __tablename__ = "medicines"
     
+    # --- Identification ---
     code = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False, index=True)
+    code_barres = Column(String(50), nullable=True, index=True)  # EAN/UPC barcode
+    dci = Column(String(200), nullable=True)  # Dénomination Commune Internationale
+    
+    # --- Classification ---
     family_id = Column(Integer, ForeignKey("medicine_families.id"), nullable=True)
     type_id = Column(Integer, ForeignKey("medicine_types.id"), nullable=True)
-    quantity = Column(Float, default=0.0, nullable=False)
-    price_buy = Column(Float, nullable=False)
-    price_sell = Column(Float, nullable=False)
-    expiry_date = Column(Date, nullable=True)
-    min_stock_alert = Column(Integer, default=10, nullable=False)
-    expiry_alert_threshold = Column(Integer, default=30, nullable=False) # Alert X days before expiry
-    is_active = Column(Boolean, default=True, nullable=False) # Soft delete flag
-    
-    # New fields for detailed unit tracking
-    dosage_form = Column(String(50), nullable=True)  # e.g. Comprimé, Sirop
+    forme_galenique = Column(String(100), nullable=True)  # Comprimé, Sirop, Injectable...
+    dosage_form = Column(String(50), nullable=True)  # Legacy — kept for compatibility
     packaging = Column(String(50), nullable=True)    # e.g. Boîte
     
-    # Hierarchy: Carton -> Box -> Blister -> Unit
-    boxes_per_carton = Column(Integer, default=1, nullable=True)   # e.g. 50 Boîtes per Carton
-    carton_type = Column(String(50), default="Carton", nullable=True) # Customize container name
-
-    # Hierarchy: Box -> Blister -> Unit
-    blisters_per_box = Column(Integer, default=1, nullable=True)   # e.g. 10 Plaquettes per Boîte
-    units_per_blister = Column(Integer, default=1, nullable=True)  # e.g. 10 Comprimés per Plaquette
+    # --- Stock ---
+    quantity = Column(Float, default=0.0, nullable=False)  # Stock total en UNITÉS DE BASE
+    min_stock_alert = Column(Integer, default=10, nullable=False)
+    expiry_alert_threshold = Column(Integer, default=30, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     
-    # units_per_packaging previously used for direct division. 
-    # We will keep it for compatibility or migration, but new logic relies on the above.
-    units_per_packaging = Column(Integer, default=1, nullable=True) # DEPRECATED or used as total units per box?
+    # --- Traçabilité (dernière entrée) ---
+    lot_fabricant = Column(String(100), nullable=True)  # Dernier lot enregistré
+    date_entree_stock = Column(Date, nullable=True)  # Date dernière entrée
+    expiry_date = Column(Date, nullable=True)  # Date péremption la plus proche
+    fournisseur = Column(String(200), nullable=True)  # Dernier fournisseur
+    
+    # --- Conditionnement hiérarchique ---
+    # Carton → contient N Boîtes → contient N Plaquettes → contient N Unités
+    boxes_per_carton = Column(Integer, default=1, nullable=True)
+    blisters_per_box = Column(Integer, default=1, nullable=True)  # Plaquettes par boîte
+    units_per_blister = Column(Integer, default=1, nullable=True)  # Unités par plaquette
+    carton_type = Column(String(50), default="Carton", nullable=True)
+    units_per_packaging = Column(Integer, default=1, nullable=True)  # Legacy compat
+    
+    # --- Prix multi-niveaux (derniers prix enregistrés) ---
+    price_buy = Column(Float, default=0.0, nullable=False)  # Legacy — prix achat boîte
+    price_sell = Column(Float, default=0.0, nullable=False)  # Legacy — prix vente boîte
+    prix_achat_unite = Column(Float, default=0.0)
+    prix_vente_unite = Column(Float, default=0.0)
+    prix_achat_boite = Column(Float, default=0.0)
+    prix_vente_boite = Column(Float, default=0.0)
+    prix_achat_carton = Column(Float, default=0.0)
+    prix_vente_carton = Column(Float, default=0.0)
+    prix_achat_plaquette = Column(Float, default=0.0)
+    prix_vente_plaquette = Column(Float, default=0.0)
     
     # Relationships
     family = relationship("MedicineFamily", back_populates="medicines")
     type = relationship("MedicineType", back_populates="medicines")
     sale_items = relationship("SaleItem", back_populates="medicine")
     restock_items = relationship("RestockItem", back_populates="medicine")
+    batches = relationship("Batch", back_populates="medicine", lazy="dynamic")
+    stock_movements = relationship("StockMovement", back_populates="medicine")
+    pricing_entries = relationship("MedicinePricing", back_populates="medicine")
     
     def __repr__(self):
         return f"<Medicine(id={self.id}, code='{self.code}', name='{self.name}', qty={self.quantity})>"

@@ -2,7 +2,7 @@
 Supplier schemas for CRUD operations.
 """
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from datetime import datetime
 from typing import Optional
 
@@ -13,7 +13,15 @@ class SupplierCreate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20, description="Contact phone number")
     email: Optional[EmailStr] = Field(None, description="Contact email")
     contact_name: Optional[str] = Field(None, max_length=100, description="Contact person name")
-    
+
+    @field_validator('email', 'phone', 'contact_name', mode='before')
+    @classmethod
+    def empty_str_to_none(cls, v):
+        """Convertit les chaînes vides en None pour les champs optionnels."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -34,6 +42,14 @@ class SupplierUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     email: Optional[EmailStr] = None
     contact_name: Optional[str] = Field(None, max_length=100)
+
+    @field_validator('email', 'phone', 'contact_name', mode='before')
+    @classmethod
+    def empty_str_to_none(cls, v):
+        """Convertit les chaînes vides en None pour les champs optionnels."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
 
 
 class SupplierResponse(BaseModel):

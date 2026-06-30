@@ -5,12 +5,15 @@ Restock Service - Logic for supplier orders and stock replenishment.
 from typing import List, Tuple, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date
+from datetime import date, timedelta
 
 from app.models.restock import RestockOrder, RestockItem, RestockStatus
 from app.models.medicine import Medicine
+from app.models.batch import Batch
+from app.models.stock_movement import StockMovement
 from app.models.supplier import Supplier
 from app.schemas.restock import RestockOrderCreate
+from app.services.medicine_service import sync_medicine_stock
 from fastapi import HTTPException, status
 
 def create_order(db: Session, order_data: RestockOrderCreate) -> RestockOrder:
@@ -79,20 +82,40 @@ def confirm_order(db: Session, order_id: int) -> RestockOrder:
             detail=f"Cannot confirm order in state {order.status}. Must be DRAFT."
         )
 
-    # Update Stock
+    # Update Stock through batches (Batch is the POS source of truth)
     for item in order.items:
         medicine = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
         if medicine:
-            medicine.quantity += item.quantity
-            # Optional: Update buy price if changed? 
-            # For now, we assume standard average cost logic or FIFO is not required by user prompt.
-            # We can update the last buy price if needed.
+            batch_ref = f"RESTOCK-{order.id}-{item.id}"
+            batch = Batch(
+                medicine_id=medicine.id,
+                batch_number=batch_ref,
+                expiration_date=item.expiry_date or medicine.expiry_date or (date.today() + timedelta(days=730)),
+                quantity=item.quantity,
+                purchase_price=item.price_buy,
+                is_active=True,
+            )
+            db.add(batch)
+            db.flush()
+
+            movement = StockMovement(
+                medicine_id=medicine.id,
+                batch_id=batch.id,
+                type="entree",
+                quantite=item.quantity,
+                motif=f"Réapprovisionnement commande #{order.id}",
+                reference=batch_ref,
+            )
+            db.add(movement)
+
             if item.price_buy > 0:
                  medicine.price_buy = item.price_buy
             
-            # Update expiry date (Solution 1: Overwrite with new stock date)
             if item.expiry_date:
-                medicine.expiry_date = item.expiry_date
+                if medicine.expiry_date is None or item.expiry_date < medicine.expiry_date:
+                    medicine.expiry_date = item.expiry_date
+
+            sync_medicine_stock(db, medicine.id)
             
     order.status = RestockStatus.CONFIRMED
     db.commit()
@@ -112,16 +135,47 @@ def cancel_order(db: Session, order_id: int) -> RestockOrder:
     if order.status == RestockStatus.CANCELLED:
         raise HTTPException(status_code=400, detail="Order already cancelled")
 
-    # If already confirmed, we must revert stock
+    # If already confirmed, we must revert the exact restock batches.
     if order.status == RestockStatus.CONFIRMED or order.status == RestockStatus.RECEIVED:
         for item in order.items:
             medicine = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
             if medicine:
-                # Revert stock
-                medicine.quantity -= item.quantity
-                # Prevent negative?
-                if medicine.quantity < 0:
-                    medicine.quantity = 0
+                batch_ref = f"RESTOCK-{order.id}-{item.id}"
+                batch = db.query(Batch).filter(
+                    Batch.medicine_id == medicine.id,
+                    Batch.batch_number == batch_ref,
+                ).first()
+
+                if not batch:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Lot de réapprovisionnement introuvable pour {medicine.name}"
+                    )
+
+                if batch.quantity < item.quantity:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Impossible d'annuler la commande: le lot {batch.batch_number} "
+                            f"a déjà été consommé partiellement"
+                        )
+                    )
+
+                batch.quantity -= item.quantity
+                if batch.quantity <= 0:
+                    batch.quantity = 0
+                    batch.is_active = False
+
+                movement = StockMovement(
+                    medicine_id=medicine.id,
+                    batch_id=batch.id,
+                    type="annulation_entree",
+                    quantite=-item.quantity,
+                    motif=f"Annulation réapprovisionnement #{order.id}",
+                    reference=batch_ref,
+                )
+                db.add(movement)
+                sync_medicine_stock(db, medicine.id)
 
     order.status = RestockStatus.CANCELLED
     db.commit()

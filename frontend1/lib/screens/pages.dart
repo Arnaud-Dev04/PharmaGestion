@@ -1,58 +1,28 @@
-import 'package:flutter/material.dart';
-import 'package:frontend1/screens/placeholder_page.dart';
+/// Barrel file — Re-exports all screen pages for convenience.
+///
+/// Import this single file to access any screen page in the app.
 
-/// Pages placeholders pour toutes les sections de l'application
+// Auth
+export 'auth/login_screen.dart';
+export 'auth/setup_screen.dart';
+export 'auth/change_password_screen.dart';
 
+// Layout
+export 'layout/main_layout.dart';
 
-
-
-
-
-
-// Suppliers Page
-class SuppliersPage extends StatelessWidget {
-  const SuppliersPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const PlaceholderPage(
-      pageName: 'Fournisseurs',
-      icon: Icons.local_shipping,
-      description: 'La gestion des fournisseurs sera ajoutée prochainement.',
-    );
-  }
-}
-
-// Users Page
-class UsersPage extends StatelessWidget {
-  const UsersPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const PlaceholderPage(
-      pageName: 'Utilisateurs',
-      icon: Icons.people,
-      description:
-          'La gestion des utilisateurs sera implémentée dans l\'Étape 8.',
-    );
-  }
-}
-
-
-
-
-
-// Super Admin Page
-class SuperAdminPage extends StatelessWidget {
-  const SuperAdminPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const PlaceholderPage(
-      pageName: 'Super Admin',
-      icon: Icons.admin_panel_settings,
-      description:
-          'Le panneau Super Admin est réservé aux Super Administrateurs.',
-    );
-  }
-}
+// Main screens
+export 'dashboard/dashboard_page.dart';
+export 'pos/pos_page.dart';
+export 'stock/stock_page.dart';
+export 'stock/stock_movements_page.dart';
+export 'medicine_pricing/medicine_pricing_page.dart';
+export 'medicine_pricing/medicine_pricing_form_page.dart';
+export 'sales/sales_history_page.dart';
+export 'reports/reports_page.dart';
+export 'suppliers/suppliers_page.dart';
+export 'users/users_page.dart';
+export 'users/user_stats_page.dart';
+export 'settings/settings_page.dart';
+export 'admin/super_admin_page.dart';
+export 'restock/restock_form_page.dart';
+export 'restock/restock_list_page.dart';

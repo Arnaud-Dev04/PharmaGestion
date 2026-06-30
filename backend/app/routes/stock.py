@@ -34,7 +34,19 @@ def enrich_medicine_response(medicine) -> dict:
     )
     response.margin = medicine.price_sell - medicine.price_buy if medicine.price_sell and medicine.price_buy else 0.0
     
-    return response
+    # Convert to dict and add batch count
+    result = response.model_dump() if hasattr(response, 'model_dump') else response.dict()
+    
+    # Count active batches for this medicine
+    batch_count = 0
+    try:
+        if hasattr(medicine, 'batches'):
+            batch_count = len([b for b in medicine.batches if b.is_active and b.quantity > 0])
+    except Exception:
+        pass
+    result['batch_count'] = batch_count
+    
+    return result
 
 
 @router.get(
@@ -81,6 +93,24 @@ async def list_medicines(
 
 
 @router.get(
+    "/medicines/expiring-soon",
+    response_model=list[MedicineResponse],
+    summary="Get medicines expiring soon (next 6 months)"
+)
+async def get_expiring_soon_medicines_path(
+    days: int = Query(180, description="Days threshold"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Get medicines expiring in the next N days (default 180 = 6 months).
+    Defined before /medicines/{medicine_id} so the literal path wins.
+    """
+    medicines = medicine_service.get_expiring_soon_medicines(db, days)
+    return [enrich_medicine_response(m) for m in medicines]
+
+
+@router.get(
     "/medicines/{medicine_id}",
     response_model=MedicineResponse,
     summary="Get a specific medicine"
@@ -105,6 +135,24 @@ async def get_medicine(
     return enrich_medicine_response(medicine)
 
 
+@router.get(
+    "/expiring-soon",
+    response_model=list[MedicineResponse],
+    summary="Get medicines expiring soon (next 6 months)"
+)
+async def get_expiring_soon_alias(
+    days: int = Query(180, description="Days threshold"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Get medicines expiring in the next N days (default 180 = 6 months).
+    This path avoids the /medicines/{medicine_id} dynamic route.
+    """
+    medicines = medicine_service.get_expiring_soon_medicines(db, days)
+    return [enrich_medicine_response(m) for m in medicines]
+
+
 @router.post(
     "/medicines",
     response_model=MedicineResponse,
@@ -122,7 +170,7 @@ async def create_medicine(
     **Accessible to**: Admin only
     """
     # Check if code already exists
-    existing = medicine_service.get_medicine_by_code(db, medicine_data.code)
+    existing = medicine_service.get_medicine_by_code(db, medicine_data.code) if medicine_data.code else None
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -232,17 +280,146 @@ async def get_stock_alerts(
 
 
 @router.get(
-    "/medicines/expiring-soon",
-    response_model=list[MedicineResponse],
-    summary="Get medicines expiring soon (next 6 months)"
+    "/batch-alerts",
+    response_model=dict,
+    summary="Get lot/batch expiration alerts"
 )
-async def get_expiring_soon(
-    days: int = Query(180, description="Days threshold"),
+async def get_batch_alerts(
+    days: int = Query(180, ge=1, description="Days threshold"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """Get expired and soon-expiring active batches."""
+    return medicine_service.get_batch_alerts(db, days)
+
+
+@router.get(
+    "/integrity",
+    response_model=dict,
+    summary="Check stock total consistency between medicines and batches"
+)
+async def get_stock_integrity(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """Compare Medicine.quantity with active batch totals."""
+    return medicine_service.get_stock_integrity(db)
+
+
+@router.post(
+    "/integrity/fix",
+    response_model=dict,
+    summary="Fix stock totals from active batches (Admin only)"
+)
+async def fix_stock_integrity(
+    current_admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_local_db)
+):
+    """Synchronize Medicine.quantity from active batch totals."""
+    return medicine_service.fix_stock_integrity(db)
+
+
+@router.get(
+    "/movements",
+    summary="Get stock movements journal with filters"
+)
+async def get_stock_movements(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    medicine_id: Optional[int] = Query(None, description="Filter by medicine ID"),
+    movement_type: Optional[str] = Query(None, description="Filter by type: entree, sortie_vente, ajustement, perte"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    search: Optional[str] = Query(None, description="Search by medicine name or reference"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_local_db)
 ):
     """
-    Get medicines expiring in the next N days (default 180 = 6 months).
+    Get paginated stock movements journal.
+    
+    Returns all stock movements with associated medicine info,
+    sorted by date descending (most recent first).
+    
+    **Accessible to**: All authenticated users
     """
-    medicines = medicine_service.get_expiring_soon_medicines(db, days)
-    return [enrich_medicine_response(m) for m in medicines]
+    from datetime import datetime, timedelta
+    from app.models.stock_movement import StockMovement
+    from app.models.medicine import Medicine
+    from sqlalchemy import desc
+    
+    query = db.query(StockMovement).join(
+        Medicine, StockMovement.medicine_id == Medicine.id
+    )
+    
+    # Apply filters
+    if medicine_id:
+        query = query.filter(StockMovement.medicine_id == medicine_id)
+    
+    if movement_type:
+        query = query.filter(StockMovement.type == movement_type)
+    
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (Medicine.name.ilike(search_term)) |
+            (StockMovement.reference.ilike(search_term)) |
+            (StockMovement.motif.ilike(search_term))
+        )
+    
+    if start_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(StockMovement.date_mouvement >= start)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            query = query.filter(StockMovement.date_mouvement < end)
+        except ValueError:
+            pass
+    
+    # Count total
+    total = query.count()
+    
+    # Order and paginate
+    movements = (
+        query.order_by(desc(StockMovement.date_mouvement))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    
+    # Format response
+    items = []
+    for m in movements:
+        med_name = "Produit supprimé"
+        med_code = "N/A"
+        try:
+            if m.medicine:
+                med_name = m.medicine.name
+                med_code = m.medicine.code
+        except Exception:
+            pass
+        
+        items.append({
+            "id": m.id,
+            "medicine_id": m.medicine_id,
+            "medicine_name": med_name,
+            "medicine_code": med_code,
+            "batch_id": m.batch_id,
+            "type": m.type,
+            "quantite": m.quantite,
+            "motif": m.motif,
+            "reference": m.reference,
+            "date_mouvement": m.date_mouvement.isoformat() if m.date_mouvement else None,
+        })
+    
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+        "items": items,
+    }

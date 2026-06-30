@@ -83,7 +83,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -97,7 +97,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withOpacity(0.1),
+                  color: AppTheme.warningColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -126,10 +126,10 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withOpacity(0.05),
+                  color: AppTheme.warningColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppTheme.warningColor.withOpacity(0.2),
+                    color: AppTheme.warningColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Text(
@@ -149,7 +149,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -182,7 +182,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
     return PopScope(
       canPop: false, // Empêcher la fermeture
       child: Material(
-        color: Colors.black.withOpacity(0.95),
+        color: Colors.black.withValues(alpha: 0.95),
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -195,7 +195,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppTheme.dangerColor.withOpacity(0.1),
+                    color: AppTheme.dangerColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -222,10 +222,10 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.dangerColor.withOpacity(0.3),
+                      color: AppTheme.dangerColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
@@ -246,7 +246,7 @@ class _LicenseWarningModalState extends State<LicenseWarningModal> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(

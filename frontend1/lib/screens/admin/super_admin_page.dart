@@ -62,9 +62,9 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
   Future<void> _loadLicense() async {
     setState(() => _isLoading = true);
     try {
-      final data = await _adminService.getLicense();
+      final data = await _adminService.getLicenseStatus();
       setState(() {
-        _expiryDate = data['expiry_date'] ?? '';
+        _expiryDate = data['expiration_date'] ?? '';
         _isValid = data['is_valid'] ?? false;
         _daysRemaining = data['days_remaining'] ?? 0;
         _dateCtrl.text = _expiryDate;
@@ -84,12 +84,13 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
   Future<void> _updateLicense() async {
     setState(() => _isUpdating = true);
     try {
-      final data = await _adminService.updateLicense(_dateCtrl.text);
+      await _adminService.updateLicense(expirationDate: _dateCtrl.text);
+      if (mounted) {
+        // Reload license status to get updated data
+        await _loadLicense();
+      }
       if (mounted) {
         setState(() {
-          _expiryDate = data['expiry_date'];
-          _isValid = data['is_valid'];
-          _daysRemaining = data['days_remaining'];
           _isUpdating = false;
         });
         final lp = Provider.of<LanguageProvider>(context, listen: false);
@@ -99,8 +100,6 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
             backgroundColor: Colors.green,
           ),
         );
-      }
-      if (mounted) {
         Provider.of<LicenseProvider>(context, listen: false).checkLicense();
       }
     } catch (e) {
@@ -209,7 +208,7 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
                                     const SizedBox(height: 4),
                                     Text(
                                       _isValid
-                                          ? "${lp.translate('valid')} (${_daysRemaining} ${lp.translate('daysRemaining')})"
+                                          ? "${lp.translate('valid')} ($_daysRemaining ${lp.translate('daysRemaining')})"
                                           : lp.translate('expired'),
                                       style: TextStyle(
                                         color: _isValid

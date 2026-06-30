@@ -1,0 +1,28 @@
+--- Testing Excel ---
+Excel OK
+
+--- Testing PDF ---
+Traceback (most recent call last):
+  File "C:\Users\ARNAUD\AppData\Local\Programs\Python\Python310\lib\site-packages\reportlab\pdfbase\pdfmetrics.py", line 697, in getFont
+    return _fonts[fontName]
+KeyError: 'Helvetica-Italic'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Pharma_logiciels_version_01\backend\test_reports_script2.py", line 17, in <module>
+    generate_stock_excel(db)
+  File "C:\Pharma_logiciels_version_01\backend\app\services\report_service.py", line 394, in generate_stock_pdf
+    c.setFont("Helvetica-Italic", 8)
+  File "C:\Users\ARNAUD\AppData\Local\Programs\Python\Python310\lib\site-packages\reportlab\pdfgen\canvas.py", line 1738, in setFont
+    font = pdfmetrics.getFont(self._fontname)
+  File "C:\Users\ARNAUD\AppData\Local\Programs\Python\Python310\lib\site-packages\reportlab\pdfbase\pdfmetrics.py", line 699, in getFont
+    return findFontAndRegister(fontName)
+  File "C:\Users\ARNAUD\AppData\Local\Programs\Python\Python310\lib\site-packages\reportlab\pdfbase\pdfmetrics.py", line 681, in findFontAndRegister
+    face = getTypeFace(fontName)
+  File "C:\Users\ARNAUD\AppData\Local\Programs\Python\Python310\lib\site-packages\reportlab\pdfbase\pdfmetrics.py", line 638, in getTypeFace
+    return _typefaces[faceName]
+KeyError: 'Helvetica-Italic'
+
+--- Testing Word ---
+Word OK

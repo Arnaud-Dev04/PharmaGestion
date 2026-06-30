@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:frontend1/services/api_service.dart';
 import 'package:frontend1/models/dashboard_stats.dart';
 
@@ -24,7 +25,7 @@ class DashboardService {
 
       return DashboardStats.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
-      print('[DashboardService] Erreur getDashboardStats: $e');
+      debugPrint('[DashboardService] Erreur getDashboardStats: $e');
       rethrow;
     }
   }
@@ -48,7 +49,7 @@ class DashboardService {
           .map((json) => CancelledSale.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('[DashboardService] Erreur getCancelledSales: $e');
+      debugPrint('[DashboardService] Erreur getCancelledSales: $e');
       rethrow;
     }
   }

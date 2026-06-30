@@ -27,11 +27,16 @@ class _SettingsPageState extends State<SettingsPage> {
   final _pharmacyNameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _nifCtrl = TextEditingController();
   final _logoUrlCtrl = TextEditingController();
   final _currencyCtrl = TextEditingController();
   final _licenseDaysCtrl = TextEditingController();
   final _licenseDurationCtrl = TextEditingController();
   final _licenseMsgCtrl = TextEditingController();
+  final _licenseExpiryDateCtrl = TextEditingController();
+
+  // License Status
+  Map<String, dynamic>? _licenseStatus;
 
   // Reset State
   bool _resetSales = false;
@@ -42,6 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+    _loadLicenseStatus();
   }
 
   @override
@@ -49,11 +55,13 @@ class _SettingsPageState extends State<SettingsPage> {
     _pharmacyNameCtrl.dispose();
     _addressCtrl.dispose();
     _phoneCtrl.dispose();
+    _nifCtrl.dispose();
     _logoUrlCtrl.dispose();
     _currencyCtrl.dispose();
     _licenseDaysCtrl.dispose();
     _licenseDurationCtrl.dispose();
     _licenseMsgCtrl.dispose();
+    _licenseExpiryDateCtrl.dispose();
     super.dispose();
   }
 
@@ -65,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _pharmacyNameCtrl.text = s.pharmacyName;
         _addressCtrl.text = s.pharmacyAddress;
         _phoneCtrl.text = s.pharmacyPhone;
+        _nifCtrl.text = s.pharmacyNif;
         _logoUrlCtrl.text = s.logoUrl;
         _currencyCtrl.text = s.currency;
         _licenseDaysCtrl.text = s.licenseWarningDays.toString();
@@ -73,7 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _isLoadingSettings = false;
       });
     } catch (e) {
-      print('Erreur loadSettings: $e');
+      debugPrint('Erreur loadSettings: $e');
       setState(() => _isLoadingSettings = false);
     }
   }
@@ -85,6 +94,7 @@ class _SettingsPageState extends State<SettingsPage> {
         'pharmacy_name': _pharmacyNameCtrl.text,
         'pharmacy_address': _addressCtrl.text,
         'pharmacy_phone': _phoneCtrl.text,
+        'pharmacy_nif': _nifCtrl.text,
         'logo_url': _logoUrlCtrl.text,
         'currency': _currencyCtrl.text,
       };
@@ -145,13 +155,74 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _loadLicenseStatus() async {
+    try {
+      final status = await _adminService.getLicenseStatus();
+      if (mounted) {
+        setState(() {
+          _licenseStatus = status;
+          // Extract expiration date if available
+          final expiryDate = status['expiration_date'];
+          if (expiryDate != null) {
+            _licenseExpiryDateCtrl.text = expiryDate.toString();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur loadLicenseStatus: $e');
+    }
+  }
+
+  Future<void> _updateLicenseExpiry() async {
+    // Validate date format
+    if (_licenseExpiryDateCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez entrer une date d\'expiration'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _adminService.updateLicense(
+        expirationDate: _licenseExpiryDateCtrl.text,
+        warningDays: int.tryParse(_licenseDaysCtrl.text),
+        warningMessage: _licenseMsgCtrl.text,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Licence mise à jour avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Reload license status
+        await _loadLicenseStatus();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la mise à jour: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _resetData(bool sales, bool products, bool users) async {
     final lp = Provider.of<LanguageProvider>(context, listen: false);
     if (!await _confirm(
       lp.translate('deleteIrreversibleConfirm'),
       lp.translate('deleteDataConfirm'),
-    ))
+    )) {
       return;
+    }
     try {
       await _adminService.resetData(
         sales: sales,
@@ -167,9 +238,11 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -258,6 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               _input(lp.translate('address'), _addressCtrl),
                               _input(lp.translate('phone'), _phoneCtrl),
+                              _input('NIF', _nifCtrl),
                               _input(lp.translate('logoPath'), _logoUrlCtrl),
                               const SizedBox(height: 24),
                               Text(
@@ -293,6 +367,138 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // === STATUT DE LA LICENCE ===
+                        const Text(
+                          'Statut de la Licence',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Display current license status
+                        if (_licenseStatus != null) ...[
+                          Card(
+                            color: _licenseStatus!['is_expired'] == true
+                                ? Colors.red[50]
+                                : (_licenseStatus!['days_remaining'] != null &&
+                                      _licenseStatus!['days_remaining'] < 30)
+                                ? Colors.orange[50]
+                                : Colors.green[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _licenseStatus!['is_expired'] == true
+                                            ? Icons.error
+                                            : Icons.check_circle,
+                                        color:
+                                            _licenseStatus!['is_expired'] ==
+                                                true
+                                            ? Colors.red
+                                            : Colors.green,
+                                        size: 32,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _licenseStatus!['is_expired'] ==
+                                                      true
+                                                  ? 'Licence Expirée'
+                                                  : 'Licence Active',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color:
+                                                    _licenseStatus!['is_expired'] ==
+                                                        true
+                                                    ? Colors.red
+                                                    : Colors.green,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Jours restants: ${_licenseStatus!['days_remaining'] ?? 0}',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_licenseStatus!['message'] != null) ...[
+                                    const SizedBox(height: 8),
+                                    const Divider(),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _licenseStatus!['message'],
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // === RENOUVELLEMENT DE LA LICENCE ===
+                        const Text(
+                          'Renouvellement de la Licence',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        _input(
+                          'Date d\'expiration (YYYY-MM-DD)',
+                          _licenseExpiryDateCtrl,
+                        ),
+
+                        const SizedBox(height: 8),
+                        Text(
+                          'Format: 2027-12-31 (Année-Mois-Jour)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _updateLicenseExpiry,
+                            icon: const Icon(Icons.update),
+                            label: const Text('Renouveler la Licence'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                        ),
+
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Divider(),
+                        ),
+
+                        // === CONFIGURATION LICENCE ===
                         const Text(
                           'Configuration Licence',
                           style: TextStyle(

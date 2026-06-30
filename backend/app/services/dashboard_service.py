@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 
 from app.models.medicine import Medicine
 from app.models.sales import Sale
+from app.models.pos_sale import POSSale, POSSaleItem
 
 
 from typing import Optional
@@ -37,16 +38,36 @@ def get_stats(db: Session, start_date: Optional[str] = None, end_date: Optional[
         traceback.print_exc()
         total_medicines = 0
     
-    # 2. Weekly sales
+    # 2. Weekly sales (only completed sales)
     try:
         week_ago = today - timedelta(days=7)
-        weekly_sales = db.query(func.sum(Sale.total_amount)).filter(
-            func.date(Sale.date) >= week_ago
+        weekly_sales_legacy = db.query(func.sum(Sale.total_amount)).filter(
+            func.date(Sale.date) >= week_ago,
+            Sale.status == 'completed'
         ).scalar() or 0
+        weekly_sales_pos = db.query(func.sum(POSSale.total_amount)).filter(
+            func.date(POSSale.date) >= week_ago,
+            POSSale.status == 'completed'
+        ).scalar() or 0
+        weekly_sales = weekly_sales_legacy + weekly_sales_pos
     except Exception:
         print("Error getting weekly sales:")
         traceback.print_exc()
         weekly_sales = 0
+
+    # 2b. Total sales count (completed only)
+    try:
+        legacy_sales_count = db.query(Sale).filter(
+            Sale.status == 'completed'
+        ).count()
+        pos_sales_count = db.query(POSSale).filter(
+            POSSale.status == 'completed'
+        ).count()
+        total_sales_count = legacy_sales_count + pos_sales_count
+    except Exception:
+        print("Error getting total sales count:")
+        traceback.print_exc()
+        total_sales_count = 0
 
     # 3. Total suppliers
     try:
@@ -57,9 +78,15 @@ def get_stats(db: Session, start_date: Optional[str] = None, end_date: Optional[
         traceback.print_exc()
         total_suppliers = 0
 
-    # 4. Total revenue
+    # 4. Total revenue (only completed sales)
     try:
-        total_revenue = db.query(func.sum(Sale.total_amount)).scalar() or 0
+        legacy_revenue = db.query(func.sum(Sale.total_amount)).filter(
+            Sale.status == 'completed'
+        ).scalar() or 0
+        pos_revenue = db.query(func.sum(POSSale.total_amount)).filter(
+            POSSale.status == 'completed'
+        ).scalar() or 0
+        total_revenue = legacy_revenue + pos_revenue
     except Exception:
         print("Error getting total revenue:")
         traceback.print_exc()
@@ -104,17 +131,27 @@ def get_stats(db: Session, start_date: Optional[str] = None, end_date: Optional[
                 func.date(Sale.date) <= dt_end_obj
             )
             
-        cancelled_sales = query.count()
+        pos_cancelled_query = db.query(POSSale).filter(
+            POSSale.status == "cancelled"
+        )
+        if start_date and end_date:
+            pos_cancelled_query = pos_cancelled_query.filter(
+                func.date(POSSale.date) >= dt_start_obj,
+                func.date(POSSale.date) <= dt_end_obj
+            )
+
+        cancelled_sales = query.count() + pos_cancelled_query.count()
     except Exception:
         print("Error getting cancelled sales:")
         traceback.print_exc()
         cancelled_sales = 0
 
-    # 8. Recent sales
+    # 8. Recent sales (only completed sales)
     try:
         recent_sales = []
-        # Récupérer les 5 dernières ventes
-        recent_sales_data = db.query(Sale).order_by(Sale.date.desc()).limit(5).all()
+        recent_sales_data = db.query(Sale).filter(
+            Sale.status == 'completed'
+        ).order_by(Sale.date.desc()).limit(5).all()
         for sale in recent_sales_data:
             recent_sales.append({
                 "id": sale.id,
@@ -122,6 +159,18 @@ def get_stats(db: Session, start_date: Optional[str] = None, end_date: Optional[
                 "total_amount": float(sale.total_amount),
                 "date": sale.date.isoformat() if sale.date else None
             })
+        recent_pos_sales = db.query(POSSale).filter(
+            POSSale.status == 'completed'
+        ).order_by(POSSale.date.desc()).limit(5).all()
+        for sale in recent_pos_sales:
+            recent_sales.append({
+                "id": sale.id,
+                "code": sale.code,
+                "total_amount": float(sale.total_amount),
+                "date": sale.date.isoformat() if sale.date else None
+            })
+        recent_sales.sort(key=lambda item: item.get("date") or "", reverse=True)
+        recent_sales = recent_sales[:5]
     except Exception:
         print("Error getting recent sales:")
         traceback.print_exc()
@@ -173,9 +222,11 @@ def get_stats(db: Session, start_date: Optional[str] = None, end_date: Optional[
     
     return {
         "total_medicines": total_medicines,
+        "total_sales_count": total_sales_count,
         "weekly_sales": float(weekly_sales),
         "total_suppliers": total_suppliers,
         "expired_medicines": expired_medicines,
+        "expiring_soon_count": len(expiring_soon),
         "low_stock_medicines": low_stock_medicines,
         "total_revenue": float(total_revenue),
         "cancelled_sales": cancelled_sales,
@@ -239,8 +290,48 @@ def get_cancelled_sales_details(db: Session, limit: int = 50, start_date: Option
                 "total_amount": sale.total_amount,
                 "items": sale_items
             })
+
+        pos_query = db.query(POSSale, User).outerjoin(
+            User, POSSale.cancelled_by == User.id
+        ).filter(
+            POSSale.status == "cancelled"
+        )
+
+        if start_date and end_date:
+            pos_query = pos_query.filter(
+                func.date(POSSale.date) >= dt_start_obj,
+                func.date(POSSale.date) <= dt_end_obj
+            )
+
+        for sale, canceller in pos_query.order_by(POSSale.cancelled_at.desc()).limit(limit).all():
+            sale_items = [
+                {"medicine_name": item.medicine.name if item.medicine else "Unknown"}
+                for item in sale.items
+            ]
+
+            user_name = "N/A"
+            if canceller:
+                if getattr(canceller, "first_name", None) and getattr(canceller, "last_name", None):
+                    user_name = f"{canceller.first_name} {canceller.last_name}"
+                elif canceller.username:
+                    user_name = canceller.username
+
+            detailed_sales.append({
+                "id": sale.id,
+                "user_id": sale.user_id,
+                "user_name": user_name,
+                "date": sale.date,
+                "cancelled_at": sale.cancelled_at,
+                "total_amount": sale.total_amount,
+                "items": sale_items
+            })
+
+        detailed_sales.sort(
+            key=lambda sale: sale.get("cancelled_at") or datetime.min,
+            reverse=True,
+        )
             
-        return detailed_sales
+        return detailed_sales[:limit]
     except Exception:
         import traceback
         print("Error getting cancelled sales details:")
@@ -276,13 +367,27 @@ def get_revenue_chart_data(db: Session, days: int = 7, start_date: Optional[str]
             func.sum(Sale.total_amount).label('total')
         ).filter(
             func.date(Sale.date) >= start_date_val,
-            func.date(Sale.date) <= end_date_val
+            func.date(Sale.date) <= end_date_val,
+            Sale.status == 'completed'
         ).group_by(
             func.date(Sale.date)
+        ).all()
+        daily_pos_sales = db.query(
+            func.date(POSSale.date).label('sale_date'),
+            func.sum(POSSale.total_amount).label('total')
+        ).filter(
+            func.date(POSSale.date) >= start_date_val,
+            func.date(POSSale.date) <= end_date_val,
+            POSSale.status == 'completed'
+        ).group_by(
+            func.date(POSSale.date)
         ).all()
         
         # Convert result to dict
         sales_map = {str(d[0]): float(d[1] or 0) for d in daily_sales}
+        for sale_date, total in daily_pos_sales:
+            key = str(sale_date)
+            sales_map[key] = sales_map.get(key, 0.0) + float(total or 0)
         
         # Generate full list
         chart_data = []
@@ -317,7 +422,7 @@ def get_top_selling_products(db: Session, limit: int = 15, start_date: Optional[
     from app.models.sales import SaleItem
     
     try:
-        # Group sale items by medicine and sum quantities
+        # Group sale items by medicine and sum quantities (completed sales only)
         query = db.query(
             Medicine.id,
             Medicine.name,
@@ -325,11 +430,13 @@ def get_top_selling_products(db: Session, limit: int = 15, start_date: Optional[
             func.sum(SaleItem.quantity).label('total_sold')
         ).join(
             SaleItem, SaleItem.medicine_id == Medicine.id
+        ).join(
+            Sale, SaleItem.sale_id == Sale.id
+        ).filter(
+            Sale.status == 'completed'
         )
         
         if start_date and end_date:
-            # Need to join with Sale to filter by date
-            query = query.join(Sale, SaleItem.sale_id == Sale.id)
             dt_start_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
             dt_end_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
             query = query.filter(
@@ -342,15 +449,51 @@ def get_top_selling_products(db: Session, limit: int = 15, start_date: Optional[
         ).order_by(
             func.sum(SaleItem.quantity).desc()
         ).limit(limit).all()
-        
-        return [
-            {
+
+        products_map = {
+            p.id: {
                 "id": p.id,
                 "name": p.name,
                 "code": p.code,
-                "total_sold": int(p.total_sold or 0)
-            } for p in top_products
-        ]
+                "total_sold": int(p.total_sold or 0),
+            }
+            for p in top_products
+        }
+
+        pos_query = db.query(
+            Medicine.id,
+            Medicine.name,
+            Medicine.code,
+            func.sum(POSSaleItem.quantity).label('total_sold')
+        ).join(
+            POSSaleItem, POSSaleItem.medicine_id == Medicine.id
+        ).join(
+            POSSale, POSSaleItem.sale_id == POSSale.id
+        ).filter(
+            POSSale.status == 'completed'
+        )
+
+        if start_date and end_date:
+            pos_query = pos_query.filter(
+                func.date(POSSale.date) >= dt_start_obj,
+                func.date(POSSale.date) <= dt_end_obj
+            )
+
+        for p in pos_query.group_by(Medicine.id, Medicine.name, Medicine.code).all():
+            if p.id not in products_map:
+                products_map[p.id] = {
+                    "id": p.id,
+                    "name": p.name,
+                    "code": p.code,
+                    "total_sold": 0,
+                }
+            products_map[p.id]["total_sold"] += int(p.total_sold or 0)
+
+        return sorted(
+            products_map.values(),
+            key=lambda item: item["total_sold"],
+            reverse=True,
+        )[:limit]
     except Exception:
         import traceback
         print("Error getting top selling products:")
@@ -374,7 +517,15 @@ def get_sales_by_day_of_week(db: Session, days: int = 7) -> List[Dict[str, Any]]
             func.strftime('%w', Sale.date).label('dow'),
             func.sum(Sale.total_amount).label('total')
         ).filter(
-            func.date(Sale.date) >= start_date
+            func.date(Sale.date) >= start_date,
+            Sale.status == 'completed'
+        ).group_by(text('dow')).all()
+        pos_results = db.query(
+            func.strftime('%w', POSSale.date).label('dow'),
+            func.sum(POSSale.total_amount).label('total')
+        ).filter(
+            func.date(POSSale.date) >= start_date,
+            POSSale.status == 'completed'
         ).group_by(text('dow')).all()
         
         # Map 0-6 to day names
@@ -384,6 +535,9 @@ def get_sales_by_day_of_week(db: Session, days: int = 7) -> List[Dict[str, Any]]
         }
         
         results_dict = {str(r[0]): float(r[1] or 0) for r in results}
+        for dow, total in pos_results:
+            key = str(dow)
+            results_dict[key] = results_dict.get(key, 0.0) + float(total or 0)
         
         data = []
         for i in range(7):
@@ -416,10 +570,21 @@ def get_sales_by_hour(db: Session, days: int = 7) -> List[Dict[str, Any]]:
             func.strftime('%H', Sale.date).label('hour'),
             func.sum(Sale.total_amount).label('total')
         ).filter(
-            func.date(Sale.date) >= start_date
+            func.date(Sale.date) >= start_date,
+            Sale.status == 'completed'
+        ).group_by(text('hour')).order_by(text('hour')).all()
+        pos_results = db.query(
+            func.strftime('%H', POSSale.date).label('hour'),
+            func.sum(POSSale.total_amount).label('total')
+        ).filter(
+            func.date(POSSale.date) >= start_date,
+            POSSale.status == 'completed'
         ).group_by(text('hour')).order_by(text('hour')).all()
         
         results_dict = {int(r[0]): float(r[1] or 0) for r in results}
+        for hour, total in pos_results:
+            key = int(hour)
+            results_dict[key] = results_dict.get(key, 0.0) + float(total or 0)
         
         data = []
         # Fill all 24 hours

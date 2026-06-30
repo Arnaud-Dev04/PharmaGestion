@@ -115,10 +115,11 @@ class _UsersPageState extends State<UsersPage> {
         await _userService.toggleStatus(user.id);
         _loadUsers();
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
           );
+        }
       }
     }
   }
@@ -690,12 +691,13 @@ class _UsersPageState extends State<UsersPage> {
                                     ),
                                 ],
                                 onSelected: (value) {
-                                  if (value == 'edit')
+                                  if (value == 'edit') {
                                     _showUserDialog(
                                       languageProvider,
                                       user: user,
                                     );
-                                  if (value == 'stats')
+                                  }
+                                  if (value == 'stats') {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -703,10 +705,13 @@ class _UsersPageState extends State<UsersPage> {
                                             UserStatsPage(userId: user.id),
                                       ),
                                     );
-                                  if (value == 'toggle')
+                                  }
+                                  if (value == 'toggle') {
                                     _toggleStatus(user, languageProvider);
-                                  if (value == 'delete')
+                                  }
+                                  if (value == 'delete') {
                                     _deleteUser(user, languageProvider);
+                                  }
                                 },
                               ),
                             ),

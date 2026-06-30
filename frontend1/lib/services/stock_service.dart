@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:frontend1/services/api_service.dart';
 import 'package:frontend1/models/medicine.dart';
 
@@ -14,7 +15,7 @@ class StockService {
     String? search,
   }) async {
     try {
-      final queryParams = <String, dynamic>{'page': page, 'limit': limit};
+      final queryParams = <String, dynamic>{'page': page, 'page_size': limit};
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
@@ -26,7 +27,7 @@ class StockService {
 
       return StockResponse.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
-      print('[StockService] Erreur getMedicines: $e');
+      debugPrint('[StockService] Erreur getMedicines: $e');
       rethrow;
     }
   }
@@ -39,7 +40,7 @@ class StockService {
 
       return Medicine.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
-      print('[StockService] Erreur createMedicine: $e');
+      debugPrint('[StockService] Erreur createMedicine: $e');
       rethrow;
     }
   }
@@ -56,7 +57,7 @@ class StockService {
 
       return Medicine.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
-      print('[StockService] Erreur updateMedicine: $e');
+      debugPrint('[StockService] Erreur updateMedicine: $e');
       rethrow;
     }
   }
@@ -67,7 +68,7 @@ class StockService {
     try {
       await _apiService.delete('/stock/medicines/$id');
     } catch (e) {
-      print('[StockService] Erreur deleteMedicine: $e');
+      debugPrint('[StockService] Erreur deleteMedicine: $e');
       rethrow;
     }
   }

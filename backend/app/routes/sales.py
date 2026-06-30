@@ -5,6 +5,8 @@ Sales routes - POS endpoints for creating sales and generating invoices.
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import logging
+import traceback
 
 from app.database import get_local_db
 from app.models.user import User
@@ -15,55 +17,108 @@ from app.services import sales_service, pdf_service
 
 # Create router
 router = APIRouter()
+logger = logging.getLogger("sales_routes")
 
 
 def enrich_sale_response(sale, db: Session) -> dict:
     """Enrich sale response with calculated fields and nested data."""
-    # Get items with medicine details
-    items = []
-    for item in sale.items:
-        items.append(SaleItemResponse(
-            id=item.id,
-            medicine_id=item.medicine_id,
-            medicine_name=item.medicine.name,
-            medicine_code=item.medicine.code,
-            quantity=item.quantity,
-            unit_price=item.unit_price,
-            total_price=item.total_price
-        ))
-    
-    # Calculate bonus earned
-    bonus_earned = sales_service.calculate_bonus_points(sale.total_amount) if sale.customer else 0
-    
-    # Build response
-    
-    # helper for full name
+    # Helper for full name
     def get_full_name(user):
         if not user:
             return None
-        if user.first_name and user.last_name:
-            return f"{user.first_name} {user.last_name}"
-        return user.username
+        try:
+            if user.first_name and user.last_name:
+                return f"{user.first_name} {user.last_name}"
+            return user.username
+        except Exception:
+            return "Unknown"
+
+    # Get items with medicine details
+    items = []
+    for item in sale.items:
+        try:
+            med_name = item.medicine.name if item.medicine else "Produit supprimé"
+            med_code = item.medicine.code if item.medicine else "N/A"
+        except Exception:
+            med_name = "Produit supprimé"
+            med_code = "N/A"
+
+        try:
+            items.append(SaleItemResponse(
+                id=item.id,
+                medicine_id=item.medicine_id,
+                medicine_name=med_name,
+                medicine_code=med_code,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                total_price=item.total_price,
+                sale_type=getattr(item, 'sale_type', 'packaging') or 'packaging',
+                discount_percent=getattr(item, 'discount_percent', 0.0) or 0.0,
+            ).model_dump())
+        except Exception as e:
+            logger.warning(f"SaleItemResponse failed for item #{item.id}: {e}")
+            items.append({
+                "id": item.id,
+                "medicine_id": item.medicine_id,
+                "medicine_name": med_name,
+                "medicine_code": med_code,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "total_price": item.total_price,
+                "sale_type": "packaging",
+                "discount_percent": 0.0,
+            })
+
+    # Calculate bonus earned
+    bonus_earned = 0
+    try:
+        if sale.customer:
+            bonus_earned = sales_service.calculate_bonus_points(sale.total_amount)
+    except Exception:
+        pass
+
+    # Customer data
+    customer_data = None
+    if sale.customer:
+        try:
+            customer_data = {
+                "id": sale.customer.id,
+                "first_name": sale.customer.first_name or "",
+                "last_name": sale.customer.last_name or "",
+                "phone": getattr(sale.customer, 'phone', '') or "",
+                "total_points": getattr(sale.customer, 'total_points', 0) or 0,
+                "created_at": str(getattr(sale.customer, 'created_at', '')),
+                "updated_at": str(getattr(sale.customer, 'updated_at', '')),
+            }
+        except Exception as e:
+            logger.warning(f"Customer serialize failed for sale #{sale.id}: {e}")
+
+    # User name
+    user_name = "Unknown"
+    try:
+        user_name = get_full_name(sale.user) or "Unknown"
+    except Exception:
+        pass
 
     response_data = {
         "id": sale.id,
         "code": sale.code,
         "total_amount": sale.total_amount,
-        "payment_method": sale.payment_method,
+        "payment_method": sale.payment_method or "cash",
         "date": sale.date,
         "user_id": sale.user_id,
-        "user_name": get_full_name(sale.user) or "Unknown",
-        "status": getattr(sale, 'status', 'completed'),
+        "user_name": user_name,
+        "status": getattr(sale, 'status', 'completed') or 'completed',
         "cancelled_at": getattr(sale, 'cancelled_at', None),
         "customer_id": sale.customer_id,
         "items": items,
-        "customer": CustomerResponse.model_validate(sale.customer) if sale.customer else None,
+        "customer": customer_data,
         "bonus_earned": bonus_earned,
-        "cancelled_by": get_full_name(sale.cancelled_by_user),
-        "cancelled_at": sale.cancelled_at
+        "cancelled_by": get_full_name(getattr(sale, 'cancelled_by_user', None)),
     }
-    
+
     return response_data
+
 
 
 @router.post(
@@ -171,18 +226,46 @@ async def get_sales_history(
         filters["status"] = status_filter
     
     # Get history
-    sales, total = sales_service.get_sales_history(
-        db=db,
-        page=page,
-        page_size=page_size,
-        filters=filters
-    )
+    try:
+        sales, total = sales_service.get_sales_history(
+            db=db,
+            page=page,
+            page_size=page_size,
+            filters=filters
+        )
+    except Exception as e:
+        logger.error(f"get_sales_history failed: {type(e).__name__}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Erreur chargement historique: {str(e)}")
     
     # Format response
     from app.schemas.common import PaginatedResponse
     
-    # Enrich items
-    enriched_sales = [enrich_sale_response(sale, db) for sale in sales]
+    # Enrich items - with error handling per sale
+    enriched_sales = []
+    for sale in sales:
+        try:
+            enriched_sales.append(enrich_sale_response(sale, db))
+        except Exception as e:
+            logger.error(f"enrich_sale_response failed for sale #{sale.id}: {type(e).__name__}: {e}")
+            logger.error(traceback.format_exc())
+            # Ajouter une version minimale plutôt que crasher
+            enriched_sales.append({
+                "id": sale.id,
+                "code": sale.code or "N/A",
+                "total_amount": sale.total_amount or 0,
+                "payment_method": sale.payment_method or "cash",
+                "date": sale.date,
+                "user_id": sale.user_id,
+                "user_name": "Erreur",
+                "status": getattr(sale, 'status', 'completed'),
+                "cancelled_at": None,
+                "customer_id": sale.customer_id,
+                "items": [],
+                "customer": None,
+                "bonus_earned": 0,
+                "cancelled_by": None,
+            })
     
     return PaginatedResponse(
         total=total,
@@ -227,12 +310,33 @@ async def cancel_sale(
             detail="Sale is already cancelled"
         )
     
-    # Restore stock for each item
+    from app.services.medicine_service import adjust_stock_to_quantity
+
+    def _base_units_for_item(item) -> float:
+        medicine = item.medicine
+        total_units = medicine.units_per_packaging or 1
+        sale_type = getattr(item, "sale_type", "packaging") or "packaging"
+        if sale_type == "unit":
+            return float(item.quantity)
+        if sale_type == "blister":
+            return float(item.quantity) * (medicine.units_per_blister or 1)
+        if sale_type == "carton":
+            return float(item.quantity) * (medicine.boxes_per_carton or 1) * total_units
+        return float(item.quantity) * total_units
+
+    # Restore stock for each item in base units and create adjustment batches
     for item in sale.items:
         medicine = item.medicine  # Access relationship
         if medicine:
-            # We add back the quantity sold
-            medicine.quantity += item.quantity
+            base_units = _base_units_for_item(item)
+            adjust_stock_to_quantity(
+                db,
+                medicine,
+                float(medicine.quantity or 0) + base_units,
+                motif=f"Annulation vente {sale.code}",
+                reference=f"CANCEL-{sale.code}",
+                expiry_date=medicine.expiry_date,
+            )
             
     # Update sale status
     sale.status = "cancelled"

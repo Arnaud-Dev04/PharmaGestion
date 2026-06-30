@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:frontend1/services/api_service.dart';
 
 class CustomerService {
@@ -11,7 +12,7 @@ class CustomerService {
       );
       return response.data['items'] ?? [];
     } catch (e) {
-      print('Error searching customers: $e');
+      debugPrint('Error searching customers: $e');
       return [];
     }
   }
@@ -21,7 +22,7 @@ class CustomerService {
       final response = await _apiService.post('/customers/', data: data);
       return response.data;
     } catch (e) {
-      print('Error creating customer: $e');
+      debugPrint('Error creating customer: $e');
       rethrow;
     }
   }

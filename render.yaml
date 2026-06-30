@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: gestpharma
+    runtime: python
+    buildCommand: |
+      cd backend && pip install -r requirements.txt
+      cd ../frontend1 && flutter build web 2>/dev/null || true
+    startCommand: cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DB_URL_LOCAL
+        value: sqlite:///./pharmacy_local.db
+      - key: DB_URL_REMOTE
+        value: sqlite:///./pharmacy_local.db
+      - key: SECRET_KEY
+        value: pharma-gest-s3cur3-k3y-2026-render
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "720"
+      - key: DEBUG
+        value: "False"

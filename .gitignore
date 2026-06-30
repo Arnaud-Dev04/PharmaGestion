@@ -196,3 +196,6 @@ backend/tests/*.xlsx
 _ARCHIVE/
 
 
+
+.vercel
+.env*.local

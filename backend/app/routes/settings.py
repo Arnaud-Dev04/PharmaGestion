@@ -39,6 +39,7 @@ async def get_settings(
     response_data["pharmacy_address"] = settings_dict.get("pharmacy_address", "")
     response_data["pharmacy_phone"] = settings_dict.get("pharmacy_phone", "")
     response_data["currency"] = settings_dict.get("currency", "FBu")
+    response_data["pharmacy_nif"] = settings_dict.get("pharmacy_nif", "")
     response_data["logo_url"] = settings_dict.get("logo_url", None)
     
     try:

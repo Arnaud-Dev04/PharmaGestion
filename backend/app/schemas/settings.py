@@ -9,8 +9,8 @@ class SettingsUpdate(BaseModel):
     pharmacy_name: Optional[str] = None
     pharmacy_address: Optional[str] = None
     pharmacy_phone: Optional[str] = None
+    pharmacy_nif: Optional[str] = None
     bonus_percentage: Optional[float] = None
-    currency: Optional[str] = "FBu"
     currency: Optional[str] = "FBu"
     logo_url: Optional[str] = None # Can be URL or Base64 string
     
@@ -26,8 +26,8 @@ class SettingsResponse(BaseModel):
     pharmacy_name: str = "Ma Pharmacie"
     pharmacy_address: str = ""
     pharmacy_phone: str = ""
+    pharmacy_nif: str = ""
     bonus_percentage: float = 0.0
-    currency: str = "FBu"
     currency: str = "FBu"
     logo_url: Optional[str] = None
     

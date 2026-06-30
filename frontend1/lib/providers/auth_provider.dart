@@ -14,6 +14,8 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _mustChangePassword = false;
+  bool _isFirstSetup = false;
 
   // Getters
   User? get user => _user;
@@ -21,6 +23,8 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _token != null && _user != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get mustChangePassword => _mustChangePassword;
+  bool get isFirstSetup => _isFirstSetup;
 
   /// Initialiser l'authentification au démarrage de l'app
   /// Vérifie si un token existe et s'il est valide
@@ -35,18 +39,26 @@ class AuthProvider with ChangeNotifier {
       if (savedToken != null) {
         _token = savedToken;
 
+        // Récupérer les flags sauvegardés
+        final savedMustChange = await _secureStorage.read(key: 'must_change_password');
+        final savedFirstSetup = await _secureStorage.read(key: 'is_first_setup');
+        _mustChangePassword = savedMustChange == 'true';
+        _isFirstSetup = savedFirstSetup == 'true';
+
         // Vérifier si le token est valide en récupérant l'utilisateur
         try {
           final userData = await _authService.getCurrentUser();
           _user = userData;
+          // Mettre à jour must_change_password depuis le serveur
+          _mustChangePassword = userData.mustChangePassword;
         } catch (e) {
           // Token invalide ou expiré, on le supprime
-          print('[AuthProvider] Token invalide: $e');
+          debugPrint('[AuthProvider] Token invalide: $e');
           await _clearAuthData();
         }
       }
     } catch (e) {
-      print('[AuthProvider] Erreur lors de l\'initialisation: $e');
+      debugPrint('[AuthProvider] Erreur lors de l\'initialisation: $e');
       await _clearAuthData();
     } finally {
       _isLoading = false;
@@ -61,19 +73,27 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Appeler l'API de login pour obtenir le token
-      final accessToken = await _authService.login(username, password);
+      // 1. Appeler l'API de login pour obtenir le token et les flags
+      final loginResult = await _authService.login(username, password);
+      final accessToken = loginResult['access_token'] as String;
       _token = accessToken;
+      _mustChangePassword = loginResult['must_change_password'] as bool;
+      _isFirstSetup = loginResult['is_first_setup'] as bool;
 
-      // 2. Sauvegarder le token de manière sécurisée
+      // 2. Sauvegarder le token et les flags
       await _secureStorage.write(key: 'auth_token', value: accessToken);
+      await _secureStorage.write(
+        key: 'must_change_password',
+        value: _mustChangePassword.toString(),
+      );
+      await _secureStorage.write(
+        key: 'is_first_setup',
+        value: _isFirstSetup.toString(),
+      );
 
       // 3. Récupérer les informations de l'utilisateur
       final userData = await _authService.getCurrentUser();
       _user = userData;
-
-      // 4. Sauvegarder les données utilisateur (optionnel, pour affichage rapide)
-      await _secureStorage.write(key: 'user_data', value: userData.toString());
 
       _isLoading = false;
       notifyListeners();
@@ -81,6 +101,60 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Changer le mot de passe initial (première connexion)
+  Future<bool> changeInitialPassword(
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _authService.changeInitialPassword(
+        newPassword,
+        confirmPassword,
+      );
+
+      // Mettre à jour le token si retourné
+      if (result['access_token'] != null) {
+        _token = result['access_token'] as String;
+        await _secureStorage.write(key: 'auth_token', value: _token!);
+      }
+
+      _mustChangePassword = false;
+      await _secureStorage.write(key: 'must_change_password', value: 'false');
+
+      // Rafraîchir l'utilisateur
+      final userData = await _authService.getCurrentUser();
+      _user = userData;
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Marquer la configuration initiale comme terminée
+  Future<bool> completeSetup() async {
+    try {
+      await _authService.completeSetup();
+      _isFirstSetup = false;
+      await _secureStorage.write(key: 'is_first_setup', value: 'false');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return false;
     }
@@ -101,7 +175,7 @@ class AuthProvider with ChangeNotifier {
       _user = userData;
       notifyListeners();
     } catch (e) {
-      print('[AuthProvider] Erreur lors du rafraîchissement: $e');
+      debugPrint('[AuthProvider] Erreur lors du rafraîchissement: $e');
       // Si l'erreur est 401, déconnecter l'utilisateur
       if (e.toString().contains('Session expirée') ||
           e.toString().contains('401')) {
@@ -115,8 +189,12 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _token = null;
     _errorMessage = null;
+    _mustChangePassword = false;
+    _isFirstSetup = false;
     await _secureStorage.delete(key: 'auth_token');
     await _secureStorage.delete(key: 'user_data');
+    await _secureStorage.delete(key: 'must_change_password');
+    await _secureStorage.delete(key: 'is_first_setup');
   }
 
   /// Réinitialiser le message d'erreur

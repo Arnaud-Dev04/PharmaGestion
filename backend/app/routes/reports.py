@@ -1,9 +1,10 @@
 """
 Report Routes - Endpoints for file exports (Excel/PDF).
+Includes both download (attachment) and inline preview endpoints.
 """
 
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,10 @@ from app.services import report_service
 
 router = APIRouter()
 
+
+# ══════════════════════════════════════════════════════════════════
+# STOCK REPORTS
+# ══════════════════════════════════════════════════════════════════
 
 @router.get(
     "/stock/pdf",
@@ -26,10 +31,40 @@ async def download_stock_pdf(
     """
     Generate and download current stock status as PDF.
     """
-    pdf_file = report_service.generate_stock_pdf(db)
+    try:
+        pdf_file = report_service.generate_stock_pdf(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
     headers = {
         'Content-Disposition': f'attachment; filename="stock_report_{date.today()}.pdf"'
+    }
+    
+    return StreamingResponse(
+        pdf_file,
+        media_type='application/pdf',
+        headers=headers
+    )
+
+
+@router.get(
+    "/stock/pdf/preview",
+    summary="Preview stock report (PDF inline)"
+)
+async def preview_stock_pdf(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Generate and display stock PDF inline in the browser.
+    """
+    try:
+        pdf_file = report_service.generate_stock_pdf(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    headers = {
+        'Content-Disposition': f'inline; filename="stock_report_{date.today()}.pdf"'
     }
     
     return StreamingResponse(
@@ -50,8 +85,11 @@ async def download_stock_excel(
     """
     Generate and download current stock status as Excel.
     """
-    excel_file = report_service.generate_stock_excel(db)
-    
+    try:
+        excel_file = report_service.generate_stock_excel(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     headers = {
         'Content-Disposition': f'attachment; filename="stock_report_{date.today()}.xlsx"'
     }
@@ -74,8 +112,11 @@ async def download_stock_word(
     """
     Generate and download current stock status as Word (doc).
     """
-    word_file = report_service.generate_stock_word(db)
-    
+    try:
+        word_file = report_service.generate_stock_word(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     headers = {
         'Content-Disposition': f'attachment; filename="stock_report_{date.today()}.doc"'
     }
@@ -86,6 +127,10 @@ async def download_stock_word(
         headers=headers
     )
 
+
+# ══════════════════════════════════════════════════════════════════
+# SALES REPORTS
+# ══════════════════════════════════════════════════════════════════
 
 @router.get(
     "/sales/pdf",
@@ -105,6 +150,32 @@ async def download_sales_pdf(
     
     headers = {
         'Content-Disposition': f'attachment; filename="sales_report_{start_date}_{end_date}.pdf"'
+    }
+    
+    return StreamingResponse(
+        pdf_file,
+        media_type='application/pdf',
+        headers=headers
+    )
+
+
+@router.get(
+    "/sales/pdf/preview",
+    summary="Preview sales report (PDF inline)"
+)
+async def preview_sales_pdf(
+    start_date: date,
+    end_date: date,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Generate and display sales PDF inline in the browser.
+    """
+    pdf_file = report_service.generate_sales_pdf(db, start_date, end_date)
+    
+    headers = {
+        'Content-Disposition': f'inline; filename="sales_report_{start_date}_{end_date}.pdf"'
     }
     
     return StreamingResponse(
@@ -166,6 +237,10 @@ async def download_sales_word(
     )
 
 
+# ══════════════════════════════════════════════════════════════════
+# FINANCIAL REPORTS
+# ══════════════════════════════════════════════════════════════════
+
 @router.get(
     "/financial/pdf",
     summary="Download financial summary (PDF)"
@@ -190,6 +265,38 @@ async def download_financial_pdf(
     
     headers = {
         'Content-Disposition': f'attachment; filename="financial_report_{date.today()}.pdf"'
+    }
+    
+    return StreamingResponse(
+        pdf_file,
+        media_type='application/pdf',
+        headers=headers
+    )
+
+
+@router.get(
+    "/financial/pdf/preview",
+    summary="Preview financial summary (PDF inline)"
+)
+async def preview_financial_pdf(
+    start_date: date = Query(None, description="Start date for period filter"),
+    end_date: date = Query(None, description="End date for period filter"),
+    period: str = "month",
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_local_db)
+):
+    """
+    Generate and display financial PDF inline in the browser.
+    """
+    pdf_file = report_service.generate_financial_pdf(
+        db, 
+        start_date=start_date,
+        end_date=end_date,
+        period_label=period
+    )
+    
+    headers = {
+        'Content-Disposition': f'inline; filename="financial_report_{date.today()}.pdf"'
     }
     
     return StreamingResponse(

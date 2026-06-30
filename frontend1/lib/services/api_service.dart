@@ -38,7 +38,7 @@ class ApiService {
         responseHeader: false,
         responseBody: true,
         error: true,
-        logPrint: (obj) => print('[API] $obj'),
+        logPrint: (obj) => debugPrint('[API] $obj'),
       ),
     );
   }
@@ -149,7 +149,7 @@ class _ErrorInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     // Gérer les erreurs 401 Unauthorized
     if (err.response?.statusCode == 401) {
-      print('[API] 401 Unauthorized - Token invalide ou expiré');
+      debugPrint('[API] 401 Unauthorized - Token invalide ou expiré');
       // La déconnexion sera gérée par AuthProvider
       // qui écoute les erreurs 401
     }
@@ -158,11 +158,11 @@ class _ErrorInterceptor extends Interceptor {
     if (err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.receiveTimeout ||
         err.type == DioExceptionType.sendTimeout) {
-      print('[API] Erreur de connexion : ${err.message}');
+      debugPrint('[API] Erreur de connexion : ${err.message}');
     }
 
     if (err.type == DioExceptionType.connectionError) {
-      print('[API] Impossible de se connecter au serveur');
+      debugPrint('[API] Impossible de se connecter au serveur');
     }
 
     String errorMessage = "Une erreur est survenue";
@@ -229,7 +229,7 @@ class _ErrorInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     // Log les réponses réussies (optionnel en production)
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print(
+      debugPrint(
         '[API] ✅ ${response.requestOptions.method} ${response.requestOptions.path} - Success',
       );
     }
