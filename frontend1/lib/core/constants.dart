@@ -6,7 +6,15 @@ class AppConstants {
   // ============================================================================
   // API Configuration
   // ============================================================================
-  static const String apiBaseUrl = 'http://127.0.0.1:8000';
+  // ── Backend URL ────────────────────────────────────────────────────────────
+  // Local (Windows desktop) : http://127.0.0.1:8000
+  // Cloud (Render)          : https://pharmagestion.onrender.com
+  static const String _localApi  = 'http://127.0.0.1:8000';
+  static const String _remoteApi = 'https://pharmagestion.onrender.com';
+
+  // Offline-first : utilise le local si disponible, sinon Render
+  // Pour forcer Render en prod, passer _remoteApi directement
+  static const String apiBaseUrl = _remoteApi;
 
   // ============================================================================
   // Border Radius (from tailwind.config.js)
