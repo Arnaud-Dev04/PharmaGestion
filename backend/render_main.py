@@ -89,10 +89,12 @@ app.include_router(settings_router,         prefix="/settings", tags=["Settings"
 app.include_router(admin_router,            prefix="/admin",    tags=["Admin"])
 app.include_router(users_router,            prefix="/users",    tags=["Users"])
 app.include_router(customers_router,        prefix="/customers",tags=["Customers"])
-app.include_router(license_router,          prefix="/license",  tags=["License"])
 app.include_router(medicine_pricing_router, prefix="/pricing",  tags=["Pricing"])
 app.include_router(pos_router,              prefix="/pos",      tags=["POS"])
-app.include_router(sync_router,             prefix="/sync",     tags=["Sync"])
+if _has_license and license_router:
+    app.include_router(license_router,      prefix="/license",  tags=["License"])
+if _has_sync and sync_router:
+    app.include_router(sync_router,         prefix="/sync",     tags=["Sync"])
 
 
 @app.get("/health", tags=["Health"])
