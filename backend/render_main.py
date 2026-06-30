@@ -48,12 +48,27 @@ from app.database import init_local_db
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Initialise la base de données au démarrage."""
-    print("[Render] Initialisation de la base de données...")
+    print("[Render] Démarrage PharmaGestion API...")
     try:
+        # Toujours init la DB locale (SQLite — même si éphémère, nécessaire pour les sessions)
+        from app.database import init_local_db
         init_local_db()
-        print("[Render] Base de données prête.")
+        print("[Render] DB locale (SQLite) initialisée.")
     except Exception as e:
-        print(f"[Render][WARNING] DB init warning: {e}")
+        print(f"[Render][WARNING] SQLite init warning: {e}")
+
+    try:
+        # Init la DB remote (PostgreSQL Render) si configurée
+        from app.database import init_remote_db
+        import os
+        db_remote = os.getenv("DB_URL_REMOTE", "")
+        if db_remote and "postgresql" in db_remote:
+            init_remote_db()
+            print("[Render] DB remote (PostgreSQL) initialisée.")
+    except Exception as e:
+        print(f"[Render][WARNING] Remote DB init warning: {e}")
+
+    print("[Render] API prête ✅")
     yield
     print("[Render] Arrêt du serveur.")
 

@@ -295,10 +295,40 @@ def init_remote_db():
 
     try:
         Base.metadata.create_all(bind=engine_remote)
-        print("[OK] Remote database (Supabase PostgreSQL) initialized successfully!")
+        print("[OK] Remote database (Render PostgreSQL) tables created!")
     except Exception as e:
-        print(f"[ERROR] Error initializing remote database (Supabase): {e}")
-        print("Check your Supabase DATABASE_URL and network connectivity.")
+        print(f"[ERROR] Error initializing remote database: {e}")
+        return
+
+    # ── Créer le super admin si la DB est vide ─────────────────────────────
+    remote_session = SessionRemote()
+    try:
+        from app.models.user import User, UserRole
+        from app.utils.security import hash_password
+
+        admin_exists = remote_session.query(User).filter(
+            User.username == "arnaud"
+        ).first()
+
+        if not admin_exists:
+            print("[*] Creating default super admin on remote DB (arnaud)...")
+            admin_user = User(
+                username="arnaud",
+                password_hash=hash_password("arnaud123"),
+                role=UserRole.SUPER_ADMIN,
+                is_active=True,
+                must_change_password=True,
+            )
+            remote_session.add(admin_user)
+            remote_session.commit()
+            print("[OK] Super admin created on Render DB (user: arnaud, pass: arnaud123)")
+        else:
+            print("[OK] Super admin already exists on remote DB.")
+    except Exception as e:
+        print(f"[WARNING] Could not seed remote admin user: {e}")
+        remote_session.rollback()
+    finally:
+        remote_session.close()
 
 
 def check_database_connection(use_remote: bool = False) -> bool:
