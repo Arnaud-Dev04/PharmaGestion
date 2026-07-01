@@ -545,7 +545,7 @@ def checkout(
         invoice_code = generate_pos_invoice_code(db)
         
         sale = POSSale(
-            uuid=str(uuid_lib.uuid4()),
+            sale_uuid=str(uuid_lib.uuid4()),
             code=invoice_code,
             total_amount=total_amount,
             payment_method=checkout_data.payment_method,
@@ -610,7 +610,7 @@ def checkout(
         db.refresh(sale)
         
         logger.info(
-            f"POS Sale {sale.code} (UUID: {sale.uuid}) created. "
+            f"POS Sale {sale.code} (UUID: {sale.sale_uuid}) created. "
             f"Total: {sale.total_amount} FBu, Items: {len(sale.items)}"
         )
         
@@ -636,7 +636,7 @@ def get_pos_sale_by_id(db: Session, sale_id: int) -> Optional[POSSale]:
 
 def get_pos_sale_by_uuid(db: Session, uuid: str) -> Optional[POSSale]:
     """Get a POS sale by UUID."""
-    return db.query(POSSale).filter(POSSale.uuid == uuid).first()
+    return db.query(POSSale).filter(POSSale.sale_uuid == uuid).first()
 
 
 def cancel_pos_sale(db: Session, sale_id: int, user_id: int) -> POSSale:
@@ -729,7 +729,7 @@ def enrich_pos_sale_response(sale: POSSale) -> dict:
     
     return {
         "id": sale.id,
-        "uuid": sale.uuid,
+        "uuid": sale.sale_uuid,
         "code": sale.code,
         "total_amount": sale.total_amount,
         "payment_method": sale.payment_method,
