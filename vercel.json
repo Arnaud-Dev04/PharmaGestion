@@ -1,37 +1,27 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "if [ ! -d flutter ]; then git clone https://github.com/flutter/flutter.git --depth 1 -b stable; fi && flutter/bin/flutter config --no-analytics && flutter/bin/flutter pub get --directory=frontend1 && flutter/bin/flutter build web --release --web-renderer canvaskit -C frontend1",
+  "outputDirectory": "frontend1/build/web",
+  "installCommand": "echo 'Flutter install via buildCommand'",
+  "framework": null,
+  "rewrites": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "50mb" }
-    },
-    {
-      "src": "frontend_build/**",
-      "use": "@vercel/static"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    { "src": "/health", "dest": "api/index.py" },
-    { "src": "/docs", "dest": "api/index.py" },
-    { "src": "/redoc", "dest": "api/index.py" },
-    { "src": "/openapi.json", "dest": "api/index.py" },
-    { "src": "/auth/(.*)", "dest": "api/index.py" },
-    { "src": "/stock/(.*)", "dest": "api/index.py" },
-    { "src": "/pos/(.*)", "dest": "api/index.py" },
-    { "src": "/sales/(.*)", "dest": "api/index.py" },
-    { "src": "/pricing/(.*)", "dest": "api/index.py" },
-    { "src": "/dashboard/(.*)", "dest": "api/index.py" },
-    { "src": "/reports/(.*)", "dest": "api/index.py" },
-    { "src": "/suppliers/(.*)", "dest": "api/index.py" },
-    { "src": "/users/(.*)", "dest": "api/index.py" },
-    { "src": "/settings/(.*)", "dest": "api/index.py" },
-    { "src": "/admin/(.*)", "dest": "api/index.py" },
-    { "src": "/customers/(.*)", "dest": "api/index.py" },
-    { "src": "/license/(.*)", "dest": "api/index.py" },
-    { "src": "/config/(.*)", "dest": "api/index.py" },
-    { "src": "/metrics(.*)", "dest": "api/index.py" },
-    { "src": "/(.*)", "dest": "frontend_build/$1" }
-  ],
-  "outputDirectory": "."
+  "headers": [
+    {
+      "source": "/flutter_service_worker.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
+      ]
+    }
+  ]
 }
