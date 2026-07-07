@@ -31,13 +31,19 @@ flutter config --no-analytics
 flutter config --enable-web
 flutter --version
 
+ROOT_DIR="$(pwd)"
+
 # ── 3. Dépendances ────────────────────────────────────────────────────────────
 echo "[3/4] Installation des dépendances..."
-flutter pub get --directory=frontend1
+cd "$ROOT_DIR/frontend1"
+flutter pub get
+cd "$ROOT_DIR"
 
 # ── 4. Build Web ──────────────────────────────────────────────────────────────
-echo "[4/4] Build Flutter Web (skwasm — défaut Flutter 3.22+)..."
-flutter build web --release -C frontend1
+echo "[4/4] Build Flutter Web (skwasm — Flutter 3.22+)..."
+cd "$ROOT_DIR/frontend1"
+flutter build web --release
+cd "$ROOT_DIR"
 
 echo "=========================================="
 echo " Build terminé ! Output: frontend1/build/web"
