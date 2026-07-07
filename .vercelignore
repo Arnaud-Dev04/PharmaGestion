@@ -1,7 +1,6 @@
 # Exclude EVERYTHING except what Vercel needs
 # Big directories
 release/
-frontend1/
 .venv/
 venv/
 dist/
@@ -12,6 +11,13 @@ build/
 .git/
 .vscode/
 node_modules/
+
+# Exclure uniquement les artefacts Flutter (pas le code source)
+frontend1/build/
+frontend1/.dart_tool/
+frontend1/.pub-cache/
+frontend1/coverage/
+
 
 # Backend heavy stuff
 backend/venv/
