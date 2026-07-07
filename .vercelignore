@@ -12,12 +12,17 @@ build/
 .vscode/
 node_modules/
 
+# Backend Python (déployé sur Render, PAS sur Vercel)
+# Vercel détecte api/ automatiquement comme serverless function — on l'exclut
+api/
+deploy_vercel/
+backend/
+
 # Exclure uniquement les artefacts Flutter (pas le code source)
 frontend1/build/
 frontend1/.dart_tool/
 frontend1/.pub-cache/
 frontend1/coverage/
-
 
 # Backend heavy stuff
 backend/venv/
