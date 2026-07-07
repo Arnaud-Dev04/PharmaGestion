@@ -36,8 +36,8 @@ echo "[3/4] Installation des dépendances..."
 flutter pub get --directory=frontend1
 
 # ── 4. Build Web ──────────────────────────────────────────────────────────────
-echo "[4/4] Build Flutter Web (canvaskit)..."
-flutter build web --release --web-renderer canvaskit -C frontend1
+echo "[4/4] Build Flutter Web (skwasm — défaut Flutter 3.22+)..."
+flutter build web --release -C frontend1
 
 echo "=========================================="
 echo " Build terminé ! Output: frontend1/build/web"
