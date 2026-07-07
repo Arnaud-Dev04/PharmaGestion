@@ -10,27 +10,23 @@ echo "=========================================="
 # ── Fix git ownership (Vercel tourne en root) ─────────────────────────────────
 git config --global --add safe.directory '*'
 
-# ── 1. Téléchargement Flutter SDK ────────────────────────────────────────────
-FLUTTER_VERSION="3.24.5"
-FLUTTER_DIR="$(pwd)/flutter"
-
-if [ ! -d "$FLUTTER_DIR" ]; then
-  echo "[1/4] Téléchargement Flutter $FLUTTER_VERSION..."
-  curl -fsSL \
-    "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
-    -o flutter.tar.xz
-  tar xf flutter.tar.xz
-  rm flutter.tar.xz
-  echo "Flutter SDK extrait."
+# ── 1. Flutter SDK — dernier stable via git clone ────────────────────────────
+if [ ! -d "flutter" ]; then
+  echo "[1/4] Clonage Flutter stable (latest)..."
+  git clone https://github.com/flutter/flutter.git \
+    --depth 1 -b stable --single-branch \
+    flutter
+  echo "Flutter SDK cloné."
 else
-  echo "[1/4] Flutter SDK déjà en cache."
+  echo "[1/4] Flutter SDK déjà en cache — mise à jour..."
+  git -C flutter pull --rebase --depth 1 || true
 fi
 
-export PATH="$PATH:$FLUTTER_DIR/bin"
+export PATH="$PATH:$(pwd)/flutter/bin"
 
 # ── 2. Configuration Flutter ──────────────────────────────────────────────────
 echo "[2/4] Configuration Flutter..."
-git config --global --add safe.directory "$FLUTTER_DIR"
+git config --global --add safe.directory "$(pwd)/flutter"
 flutter config --no-analytics
 flutter config --enable-web
 flutter --version
