@@ -15,13 +15,12 @@ load_dotenv()
 # Configuration from environment
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    import sys
-    if not getattr(sys, "frozen", False):
-        # Mode développement : utiliser une clé par défaut (NON sécurisée)
-        SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
-        print("[WARNING] SECRET_KEY non définie ! Utilisation d'une clé de développement NON sécurisée.")
-    else:
-        raise RuntimeError("FATAL: La variable d'environnement SECRET_KEY n'est pas définie !")
+    raise RuntimeError(
+        "FATAL: La variable d'environnement SECRET_KEY est obligatoire et manquante.\n"
+        "Générez une clé sécurisée avec la commande suivante :\n"
+        "  python -c \"import secrets; print(secrets.token_hex(32))\"\n"
+        "Puis ajoutez-la dans votre fichier .env ou dans les variables d'environnement Render."
+    )
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720"))

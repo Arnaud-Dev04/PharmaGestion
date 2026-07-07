@@ -30,10 +30,13 @@ def get_database_path():
 
 # Database URLs from environment
 DATABASE_URL_LOCAL = os.getenv("DB_URL_LOCAL", get_database_path())
-DATABASE_URL_REMOTE = os.getenv(
-    "DB_URL_REMOTE",
-    "postgresql://postgres:Arnaudntaki04@db.pljylrxgxecgptduawbb.supabase.co:5432/postgres"
-)
+DATABASE_URL_REMOTE = os.getenv("DB_URL_REMOTE", "")
+if not DATABASE_URL_REMOTE:
+    import logging as _logging
+    _logging.getLogger("database").warning(
+        "[WARNING] DB_URL_REMOTE non configurée — mode local SQLite uniquement. "
+        "Configurez DB_URL_REMOTE dans les variables d'environnement."
+    )
 
 # Create engines
 # SQLite engine (local/offline)
@@ -43,8 +46,11 @@ engine_local = create_engine(
     echo=False
 )
 
-# PostgreSQL / Supabase engine (remote/cloud)
-if "sqlite" in DATABASE_URL_REMOTE:
+# PostgreSQL engine (remote/cloud) — fallback sur SQLite local si non configuré
+if not DATABASE_URL_REMOTE:
+    # Pas de DB remote configurée — on réutilise l'engine local
+    engine_remote = engine_local
+elif "sqlite" in DATABASE_URL_REMOTE:
     engine_remote = create_engine(
         DATABASE_URL_REMOTE,
         connect_args={"check_same_thread": False},
@@ -53,8 +59,8 @@ if "sqlite" in DATABASE_URL_REMOTE:
 else:
     engine_remote = create_engine(
         DATABASE_URL_REMOTE,
-        pool_pre_ping=True,      # Test la connexion avant usage
-        pool_recycle=300,         # Recycle toutes les 5 min (Supabase timeout)
+        pool_pre_ping=True,
+        pool_recycle=300,
         pool_size=5,
         max_overflow=10,
         connect_args={
@@ -98,6 +104,14 @@ def get_remote_db() -> Generator:
         db.close()
 
 
+def _generate_secure_password(length: int = 16) -> str:
+    """Génère un mot de passe sécurisé aléatoire pour le premier démarrage."""
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
 def init_local_db():
     """
     Initialize local SQLite database.
@@ -115,6 +129,7 @@ def init_local_db():
         Base.metadata.create_all(bind=engine_local)
         print("[OK] Local database (SQLite) initialized successfully!")
     except Exception as e:
+        print(f"[ERROR] SQLite init failed: {e}")
         raise
 
     # Check if super admin user exists, if not create one
@@ -122,34 +137,32 @@ def init_local_db():
     from app.models.user import User, UserRole
     from app.utils.security import hash_password
     from app.models.settings import Settings
-    
+
     session = Session(bind=engine_local)
     try:
         admin_exists = session.query(User).filter(User.username == "arnaud").first()
         if not admin_exists:
-            print("[*] Creating default super admin user (arnaud)...")
+            # Utilise ADMIN_INITIAL_PASSWORD si défini, sinon génère un mot de passe aléatoire
+            initial_password = os.getenv("ADMIN_INITIAL_PASSWORD") or _generate_secure_password()
             admin_user = User(
                 username="arnaud",
-                password_hash=hash_password("arnaud123"),
+                password_hash=hash_password(initial_password),
                 role=UserRole.SUPER_ADMIN,
                 is_active=True,
                 must_change_password=True
             )
             session.add(admin_user)
             session.commit()
-            print("[OK] Default super admin user created (user: arnaud, pass: arnaud123)")
-        
+            print("[OK] Super admin créé (username: arnaud)")
+            print(f"[IMPORTANT] Mot de passe initial : {initial_password}")
+            print("[IMPORTANT] Ce mot de passe ne sera affiché qu'UNE SEULE FOIS. Changez-le immédiatement.")
+
         # Check if is_first_setup setting exists, if not create it
         first_setup_setting = session.query(Settings).filter(Settings.key == "is_first_setup").first()
         if not first_setup_setting:
-            print("[*] Setting is_first_setup flag...")
-            setting = Settings(
-                key="is_first_setup",
-                value="true"
-            )
+            setting = Settings(key="is_first_setup", value="true")
             session.add(setting)
             session.commit()
-            print("[OK] is_first_setup flag set to true")
     except Exception as e:
         print(f"[WARNING] Could not create default admin: {e}")
     finally:
@@ -311,17 +324,19 @@ def init_remote_db():
         ).first()
 
         if not admin_exists:
-            print("[*] Creating default super admin on remote DB (arnaud)...")
+            initial_password = os.getenv("ADMIN_INITIAL_PASSWORD") or _generate_secure_password()
             admin_user = User(
                 username="arnaud",
-                password_hash=hash_password("arnaud123"),
+                password_hash=hash_password(initial_password),
                 role=UserRole.SUPER_ADMIN,
                 is_active=True,
                 must_change_password=True,
             )
             remote_session.add(admin_user)
             remote_session.commit()
-            print("[OK] Super admin created on Render DB (user: arnaud, pass: arnaud123)")
+            print("[OK] Super admin créé sur la DB remote (username: arnaud)")
+            print(f"[IMPORTANT] Mot de passe initial : {initial_password}")
+            print("[IMPORTANT] Ce mot de passe ne sera affiché qu'UNE SEULE FOIS. Changez-le immédiatement.")
         else:
             print("[OK] Super admin already exists on remote DB.")
     except Exception as e:
@@ -334,10 +349,10 @@ def init_remote_db():
 def check_database_connection(use_remote: bool = False) -> bool:
     """
     Check if database connection is available.
-    
+
     Args:
-        use_remote: If True, check remote MySQL connection. Otherwise, check local SQLite.
-    
+        use_remote: If True, check remote PostgreSQL connection. Otherwise, check local SQLite.
+
     Returns:
         bool: True if connection is successful, False otherwise.
     """

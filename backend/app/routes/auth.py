@@ -4,8 +4,11 @@ Authentication routes: login, register, get user info.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.requests import Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import get_local_db
 from app.models.user import User, UserRole
@@ -21,6 +24,9 @@ from app.auth.dependencies import get_current_active_user, get_admin_user
 
 # Create router
 router = APIRouter()
+
+# Rate limiter — protège les endpoints sensibles
+_limiter = Limiter(key_func=get_remote_address)
 
 
 # ============================================================================
@@ -55,7 +61,9 @@ def authenticate_user(db: Session, username: str, password: str) -> User | None:
 # ============================================================================
 
 @router.post("/login", response_model=Token, summary="Login to get access token")
+@_limiter.limit("5/minute")  # Anti-brute-force : max 5 tentatives/minute par IP
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_local_db)
 ):

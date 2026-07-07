@@ -128,12 +128,11 @@ def search_products(
     query: str, 
     limit: int = 20
 ) -> List[ProductSearchResult]:
-    """Search products with multi-level pricing from latest MedicinePricing."""
-    try:
-        sync_legacy_stock(db)
-    except Exception as e:
-        logger.warning(f"sync_legacy_stock failed: {e}")
+    """Search products with multi-level pricing from latest MedicinePricing.
     
+    Note: sync_legacy_stock() n'est plus appelé ici — uniquement au démarrage
+    via l'endpoint /pos/sync-stock ou lors de l'init du serveur.
+    """
     today = date.today()
     
     if query and len(query.strip()) >= 1:
@@ -175,10 +174,6 @@ def search_products(
         ]
         
         # Get latest pricing for multi-level prices
-        latest_pricing = db.query(MedicinePricing).filter(
-            MedicinePricing.medicine_id == med.id
-        ).order_by(MedicinePricing.created_at.desc()).first()
-        
         latest_pricing = db.query(MedicinePricing).filter(
             MedicinePricing.medicine_id == med.id
         ).order_by(MedicinePricing.created_at.desc()).first()
@@ -421,16 +416,16 @@ def cart_add(db: Session, request: CartAddRequest) -> CartAddResponse:
 def generate_pos_invoice_code(db: Session) -> str:
     """
     Generate unique POS invoice code in format: POS-YYYY-NNNN.
-    
-    Uses a separate prefix (POS-) to distinguish from legacy sales (INV-).
+    Compatible SQLite (local) et PostgreSQL (Render).
     """
+    from sqlalchemy import extract
     current_year = datetime.now().year
-    
-    # Get the last POS sale of the current year
+
+    # extract('year', ...) est compatible SQLite ≥ 3.38 et PostgreSQL
     last_sale = db.query(POSSale).filter(
-        func.strftime('%Y', POSSale.date) == str(current_year)
+        extract('year', POSSale.date) == current_year
     ).order_by(POSSale.id.desc()).first()
-    
+
     if last_sale and last_sale.code:
         try:
             last_number = int(last_sale.code.split('-')[-1])
@@ -439,7 +434,7 @@ def generate_pos_invoice_code(db: Session) -> str:
             next_number = 1
     else:
         next_number = 1
-    
+
     return f"POS-{current_year}-{next_number:04d}"
 
 

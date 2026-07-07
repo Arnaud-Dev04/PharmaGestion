@@ -9,7 +9,14 @@ Start Command Render : uvicorn render_main:app --host 0.0.0.0 --port $PORT
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.requests import Request
 from contextlib import asynccontextmanager
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Rate limiter global — partagé avec les routes
+limiter = Limiter(key_func=get_remote_address)
 
 # ── Import des routes ─────────────────────────────────────────────────────────
 from app.routes.auth import router as auth_router
@@ -68,9 +75,21 @@ async def lifespan(application: FastAPI):
     except Exception as e:
         print(f"[Render][WARNING] Remote DB init warning: {e}")
 
+    try:
+        # Sync legacy stock au démarrage (une seule fois, pas à chaque recherche)
+        from app.database import SessionLocal
+        from app.services.pos_service import sync_legacy_stock
+        with SessionLocal() as _db:
+            created = sync_legacy_stock(_db)
+            if created:
+                print(f"[Render] {created} lot(s) auto-créé(s) via sync_legacy_stock.")
+    except Exception as e:
+        print(f"[Render][WARNING] sync_legacy_stock at startup: {e}")
+
     print("[Render] API prête ✅")
     yield
     print("[Render] Arrêt du serveur.")
+
 
 
 # ── Application FastAPI ───────────────────────────────────────────────────────
@@ -81,15 +100,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiting — protection anti-brute-force
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://pharmagestion-sigma.vercel.app,http://127.0.0.1:8000,http://localhost:8000"
+)
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if allowed_origins != ["*"] else ["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 app.include_router(auth_router,             prefix="/auth",     tags=["Auth"])
