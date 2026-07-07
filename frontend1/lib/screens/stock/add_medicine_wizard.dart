@@ -187,7 +187,40 @@ class _AddMedicineWizardState extends State<AddMedicineWizard>
         curve: Curves.easeInOutCubic);
   }
 
+  /// Extrait le message lisible depuis une erreur Dio (422, 400, 500…)
+  String _extractErrorMessage(Object e) {
+    final raw = e.toString();
+    // DioException contient la réponse Pydantic dans son message
+    final match = RegExp(r'detail["\s]*:["\s]*(.{0,300})', caseSensitive: false).firstMatch(raw);
+    if (match != null) return match.group(1)?.replaceAll(RegExp(r'[\[\]"\\]'), '').trim() ?? raw;
+    return raw;
+  }
+
   Future<void> _submit() async {
+    // Vérification pré-soumission : achat obligatoirement > 0
+    if (_achat <= 0) {
+      setState(() => _currentStep = 2);
+      _pageController.animateToPage(2,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ Veuillez saisir le prix d\'achat (> 0)'),
+        backgroundColor: AppTheme.warningColor,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    if (_pricingMode == PricingMode.pctMarge && _marge <= 0) {
+      setState(() => _currentStep = 2);
+      _pageController.animateToPage(2,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('⚠️ La marge doit être supérieure à 0%'),
+        backgroundColor: AppTheme.warningColor,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       final venteCarton    = _venteCartonCalc;
@@ -236,10 +269,17 @@ class _AddMedicineWizardState extends State<AddMedicineWizard>
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
+        final msg = _extractErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur : $e'),
+          content: Row(children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg, maxLines: 3, overflow: TextOverflow.ellipsis)),
+          ]),
           backgroundColor: AppTheme.dangerColor,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 6),
         ));
       }
     }
