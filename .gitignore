@@ -102,6 +102,12 @@ frontend1/build/
 frontend1/coverage/
 frontend1/*.iml
 
+# Ne PAS ignorer le code source Flutter
+!frontend1/lib/
+!frontend1/lib/**
+!frontend1/test/
+!frontend1/test/**
+
 # ============================================================================
 # Node.js / Frontend (si nécessaire)
 # ============================================================================
