@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend1/core/theme.dart';
 import 'package:frontend1/models/medicine.dart';
 import 'package:frontend1/services/stock_service.dart';
-import 'package:frontend1/screens/medicine_pricing/medicine_pricing_form_page.dart';
+import 'package:frontend1/screens/stock/add_medicine_wizard.dart';
 import 'package:frontend1/providers/language_provider.dart';
 import 'package:frontend1/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -82,15 +82,34 @@ class _StockPageState extends State<StockPage> {
     }
   }
 
+  /// Ouvre le nouveau wizard d'ajout/édition de médicament
   Future<void> _showMedicineDialog({Medicine? medicine}) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => const MedicinePricingFormPage(),
+      builder: (context) => const AddMedicineWizard(),
       barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.6),
     );
 
     if (result == true) {
       _loadMedicines();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 10),
+                Text('Médicament enregistré avec succès !'),
+              ],
+            ),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
